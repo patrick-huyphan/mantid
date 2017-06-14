@@ -21,6 +21,7 @@ set ( CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/buildconfig/CMake")
 set ( ENABLE_MANTIDPLOT ON CACHE BOOL "Switch for compiling the Qt4-based gui & components")
 # TODO: Switch this on by default when the builders all have Qt5 installed
 set ( ENABLE_WORKBENCH OFF CACHE BOOL "Switch for compiling the Qt5-based gui & components")
+include(cotire)
 
 set ( CPACK_INSTALL_CMAKE_PROJECTS
       "${CMAKE_BINARY_DIR}" "Mantid" "ALL" "/" )
