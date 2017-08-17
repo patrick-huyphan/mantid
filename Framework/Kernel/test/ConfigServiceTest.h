@@ -4,11 +4,12 @@
 #include <cxxtest/TestSuite.h>
 
 #include "MantidKernel/ConfigService.h"
-#include "MantidKernel/Logger.h"
-#include "MantidKernel/TestChannel.h"
+#include "MantidKernel/FacilityInfo.h"
 #include "MantidKernel/FilterChannel.h"
 #include "MantidKernel/InstrumentInfo.h"
-#include "MantidKernel/FacilityInfo.h"
+#include "MantidKernel/Logger.h"
+#include "MantidKernel/make_unique.h"
+#include "MantidKernel/TestChannel.h"
 
 #include <Poco/Path.h>
 #include <Poco/File.h>
@@ -159,7 +160,7 @@ public:
 
   void testRegisteringaNewFilter() {
     Logger log1("testRegisteringaNewFilter");
-    Poco::FilterChannel *testFilterChannel = new Poco::FilterChannel();
+    auto testFilterChannel = Mantid::Kernel::make_unique<Poco::FilterChannel>();
     std::string m_FilterChannelName = "testRegisteringaNewFilter";
 
     // Setup logging
@@ -168,14 +169,14 @@ public:
     // The root channel might be a SplitterChannel
     if (auto *splitChannel =
             dynamic_cast<Poco::SplitterChannel *>(rootChannel)) {
-      splitChannel->addChannel(testFilterChannel);
+      splitChannel->addChannel(testFilterChannel.get());
     } else {
-      Poco::Logger::setChannel(rootLogger.name(), testFilterChannel);
+      Poco::Logger::setChannel(rootLogger.name(), testFilterChannel.get());
     }
 
     auto &configService = ConfigService::Instance();
     configService.registerLoggingFilterChannel(m_FilterChannelName,
-                                               testFilterChannel);
+                                               testFilterChannel.get());
 
     int prevLogLevel = log1.getLevel();
     TSM_ASSERT("The log level start above PRIO_TRACE",
