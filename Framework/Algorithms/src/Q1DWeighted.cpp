@@ -76,6 +76,7 @@ void Q1DWeighted::init() {
   declareProperty(
       "ErrorWeighting", false,
       "Choose whether each pixel contribution will be weighted by 1/error^2.");
+  // Add option for I(q, lambda)
 }
 
 void Q1DWeighted::exec() {
