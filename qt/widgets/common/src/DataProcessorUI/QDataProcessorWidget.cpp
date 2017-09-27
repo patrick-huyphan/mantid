@@ -199,12 +199,12 @@ Set the list of tables the user is offered to open
 */
 void QDataProcessorWidget::setTableList(const QSet<QString> &tables) {
   ui.menuOpenTable->clear();
-  for (auto it = tables.begin(); it != tables.end(); ++it) {
-    QAction *openTable = ui.menuOpenTable->addAction(*it);
+  for (const auto& table : tables) {
+    QAction *openTable = ui.menuOpenTable->addAction(table);
     openTable->setIcon(QIcon("://worksheet.png"));
 
     // Map this action to the table name
-    m_openMap->setMapping(openTable, *it);
+    m_openMap->setMapping(openTable, table);
     // When repeated corrections happen the QMessageBox from openTable()
     // method in ReflMainViewPresenter will be called multiple times
     // when 'no' is clicked.
