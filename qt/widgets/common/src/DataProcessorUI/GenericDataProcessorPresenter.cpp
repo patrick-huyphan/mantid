@@ -29,6 +29,7 @@
 #include <fstream>
 #include <iterator>
 #include <sstream>
+#include <iterator>
 
 #include <iostream>
 
@@ -122,15 +123,15 @@ GenericDataProcessorPresenter::GenericDataProcessorPresenter(
     const PostprocessingAlgorithm &postprocessor,
     const std::map<QString, QString> &postprocessMap, const QString &loader)
     : WorkspaceObserver(), m_view(nullptr), m_progressView(nullptr),
-      m_mainPresenter(), m_loader(loader), m_whitelist(whitelist),
-      m_processor(processor),
+      m_mainPresenter(), m_loader(loader),
       m_postprocessing(
           postprocessor.name().isEmpty()
               ? boost::optional<PostprocessingStep>()
               : PostprocessingStep(QString(), postprocessor, postprocessMap)),
-      m_progressReporter(nullptr), m_preprocessing(QString(), preprocessMap),
-      m_promptUser(true), m_tableDirty(false), m_pauseReduction(false),
-      m_reductionPaused(true), m_nextActionFlag(ReductionFlag::StopReduceFlag) {
+      m_preprocessing(QString(), preprocessMap), m_whitelist(whitelist),
+      m_processor(processor), m_progressReporter(nullptr), m_promptUser(true),
+      m_tableDirty(false), m_pauseReduction(false), m_reductionPaused(true),
+      m_nextActionFlag(ReductionFlag::StopReduceFlag) {
 
   // Column Options must be added to the whitelist
   m_whitelist.addElement("Options", "Options",
@@ -229,9 +230,9 @@ GenericDataProcessorPresenter::~GenericDataProcessorPresenter() {}
 namespace {
 std::set<std::string> toStdStringSet(std::set<QString> in) {
   auto out = std::set<std::string>();
-  std::transform(
-      std::cbegin(in), std::cend(in), std::inserter(out, out.begin()),
-      [](QString const &inStr) -> std::string { return inStr.toStdString(); });
+  std::transform(in.cbegin(), in.cend(), std::inserter(out, out.begin()),
+                 [](QString const &inStr)
+                     -> std::string { return inStr.toStdString(); });
   return out;
 }
 }
@@ -314,7 +315,10 @@ Process selected data
 void GenericDataProcessorPresenter::process() {
   // Emit a signal hat the process is starting
   m_view->emitProcessClicked();
-
+  if (GenericDataProcessorPresenter::m_skipProcessing) {
+    m_skipProcessing = false;
+    return;
+  }
   m_selectedData = m_manager->selectedData(m_promptUser);
 
   // Don't continue if there are no items selected
@@ -945,9 +949,9 @@ void GenericDataProcessorPresenter::reduceRow(RowData *data) {
 
   auto isUnrestrictedProperty =
       [&restrictedProps](QString const &propertyName) -> bool {
-    return std::find(restrictedProps.begin(), restrictedProps.end(),
-                     propertyName) != restrictedProps.end();
-  };
+        return std::find(restrictedProps.begin(), restrictedProps.end(),
+                         propertyName) != restrictedProps.end();
+      };
 
   // Parse and set any user-specified options
   ::MantidQt::MantidWidgets::DataProcessor::setPropertiesFromKeyValueString(
@@ -997,9 +1001,8 @@ void GenericDataProcessorPresenter::reduceRow(RowData *data) {
                             ? propValue.right(propValue.indexOf("e"))
                             : "";
           propValue =
-              propValue.mid(0,
-                            propValue.indexOf(".") +
-                                m_options["RoundPrecision"].toInt() + 1) +
+              propValue.mid(0, propValue.indexOf(".") +
+                                   m_options["RoundPrecision"].toInt() + 1) +
               exp;
         }
 
@@ -1751,6 +1754,13 @@ int GenericDataProcessorPresenter::getNumberOfRows() {
   * Clear the table
  **/
 void GenericDataProcessorPresenter::clearTable() { m_manager->deleteRow(); }
+
+/**
+  * Flag used to stop processing
+**/
+void GenericDataProcessorPresenter::skipProcessing() {
+  m_skipProcessing = true;
+}
 }
 }
 }

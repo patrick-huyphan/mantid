@@ -1,102 +1,32 @@
 #include "MantidQtWidgets/Common/DataProcessorUI/WhiteList.h"
-
 #include <QString>
 
 namespace MantidQt {
 namespace MantidWidgets {
 namespace DataProcessor {
-
-Column::Column(QString const &name, QString const &algorithmProperty,
-               bool isShown, QString const &prefix, QString const &description)
-    : m_name(name), m_algorithmProperty(algorithmProperty), m_isShown(isShown),
-      m_prefix(prefix), m_description(description) {}
-
-QString const &Column::algorithmProperty() const { return m_algorithmProperty; }
-
-bool Column::isShown() const { return m_isShown; }
-
-QString const &Column::prefix() const { return m_prefix; }
-
-QString const &Column::description() const { return m_description; }
-
-QString const &Column::name() const { return m_name; }
-
-ConstColumnIterator::ConstColumnIterator(QStringIterator names,
-                                         QStringIterator descriptions,
-                                         QStringIterator algorithmProperties,
-                                         BoolIterator isShown,
-                                         QStringIterator prefixes)
-    : m_names(names), m_descriptions(descriptions),
-      m_algorithmProperties(algorithmProperties), m_isShown(isShown),
-      m_prefixes(prefixes) {}
-
-ConstColumnIterator &ConstColumnIterator::operator++() {
-  ++m_names;
-  ++m_descriptions;
-  ++m_algorithmProperties;
-  ++m_isShown;
-  ++m_prefixes;
-  return (*this);
-}
-
-ConstColumnIterator ConstColumnIterator::operator++(int) {
-  auto result = (*this);
-  ++result;
-  return result;
-}
-
-bool ConstColumnIterator::operator==(const ConstColumnIterator &other) const {
-  return m_names == other.m_names;
-}
-
-bool ConstColumnIterator::operator!=(const ConstColumnIterator &other) const {
-  return !((*this) == other);
-}
-
-auto ConstColumnIterator::operator*() const -> reference {
-  return reference(*m_names, *m_algorithmProperties, *m_isShown, *m_prefixes,
-                   *m_descriptions);
-}
-
-ConstColumnIterator &ConstColumnIterator::operator+=(difference_type n) {
-  m_names += n;
-  m_algorithmProperties += n;
-  m_isShown += n;
-  m_prefixes += n;
-  m_descriptions += n;
-  return (*this);
-}
-
-ConstColumnIterator &ConstColumnIterator::operator-=(difference_type n) {
-  m_names -= n;
-  m_algorithmProperties -= n;
-  m_isShown -= n;
-  m_prefixes -= n;
-  m_descriptions -= n;
-  return (*this);
-}
-
 /** Adds an element to the whitelist
 * @param colName : the name of the column to be added
 * @param algProperty : the name of the property linked to this column
-* @param showValue : true if we want to use what's in this column to
-* generate
-* the output ws name
-* @param prefix : the prefix to be added to the value of this column
 * @param description : a description of this column
+* @param isShown : true if we want to use what's in this column to
+* generate the output ws name.
+* @param prefix : the prefix to be added to the value of this column
 */
 void WhiteList::addElement(const QString &colName, const QString &algProperty,
                            const QString &description, bool isShown,
                            const QString &prefix) {
   m_names.emplace_back(colName);
   m_algorithmProperties.emplace_back(algProperty);
-  m_isShown.emplace_back(isShown);
+  m_isShown.push_back(isShown);
+  /* std::vector<bool> does not have emplace_back until c++14 (currently not
+   * fully supported on RHEL7).
+   * See: http://en.cppreference.com/w/cpp/container/vector/emplace_back */
   m_prefixes.emplace_back(prefix);
   m_descriptions.emplace_back(description);
 }
 
 /** Returns the column index for a column specified via its name
-    @param colName : The column name
+    @param columnName : The column name
 */
 int WhiteList::indexFromName(const QString &columnName) const {
   auto nameIt = std::find(m_names.cbegin(), m_names.cend(), columnName);
@@ -175,7 +105,6 @@ ConstColumnIterator operator-(const ConstColumnIterator &lhs,
   auto result = lhs;
   result -= n;
   return result;
-
 }
 
 ConstColumnIterator operator-(typename ConstColumnIterator::difference_type n,

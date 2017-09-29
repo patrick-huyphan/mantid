@@ -20,11 +20,8 @@ private:
 public:
   // This pair of boilerplate methods prevent the suite being created statically
   // This means the constructor isn't called when running other tests
-  static WhiteListTest *createSuite() {
-    return new WhiteListTest();
-  }
+  static WhiteListTest *createSuite() { return new WhiteListTest(); }
   static void destroySuite(WhiteListTest *suite) { delete suite; }
-  
 
   WhiteList makeTestWhiteList() {
     auto whitelist = WhiteList();
@@ -38,7 +35,7 @@ public:
 
   void test_column_index() {
     auto whitelist = makeTestWhiteList();
-    
+
     TS_ASSERT_EQUALS(whitelist.size(), 5);
     // Column indices
     TS_ASSERT_EQUALS(whitelist.indexFromName("Column1"), 0);
@@ -61,7 +58,7 @@ public:
     TS_ASSERT_EQUALS(whitelist.name(3), "Column4");
     TS_ASSERT_EQUALS(whitelist.name(4), "Column5");
   }
-  
+
   void test_column_iterator() {
     auto whitelist = makeTestWhiteList();
 
