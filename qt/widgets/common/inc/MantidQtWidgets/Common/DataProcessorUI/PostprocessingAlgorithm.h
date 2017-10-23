@@ -1,8 +1,8 @@
 #ifndef MANTIDQTMANTIDWIDGETS_DATAPROCESSORPOSTPROCESSINGALGORITHM_H
 #define MANTIDQTMANTIDWIDGETS_DATAPROCESSORPOSTPROCESSINGALGORITHM_H
 
-#include "MantidQtWidgets/Common/DllOption.h"
 #include "MantidQtWidgets/Common/DataProcessorUI/ProcessingAlgorithmBase.h"
+#include "MantidQtWidgets/Common/DllOption.h"
 
 #include <QString>
 
@@ -41,10 +41,11 @@ public:
   // Constructor
   PostprocessingAlgorithm(
       const QString &name, const QString &prefix = "",
+      const QString &suffix = "",
       const std::set<QString> &blacklist = std::set<QString>());
   // Delegating constructor
   PostprocessingAlgorithm(const QString &name, const QString &prefix,
-                          const QString &blacklist);
+                          const QString &suffix, const QString &blacklist);
   // Default constructor
   PostprocessingAlgorithm();
   // Destructor
@@ -57,10 +58,14 @@ public:
   size_t numberOfOutputProperties() const;
   // The prefix of the output property
   QString prefix() const;
+  // The suffix of the output property
+  QString suffix() const;
 
 private:
   // The prefix of the output workspace
   QString m_prefix;
+  // The suffix of the output workspace
+  QString m_suffix;
   // The name of the input property
   QString m_inputProp;
   // The name of the output property

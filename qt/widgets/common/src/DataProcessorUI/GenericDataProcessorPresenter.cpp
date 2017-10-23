@@ -12,14 +12,14 @@
 #include "MantidKernel/Utils.h"
 #include "MantidKernel/make_unique.h"
 #include "MantidQtWidgets/Common/AlgorithmHintStrategy.h"
-#include "MantidQtWidgets/Common/DataProcessorUI/GenerateNotebook.h"
 #include "MantidQtWidgets/Common/DataProcessorUI/DataProcessorView.h"
-#include "MantidQtWidgets/Common/DataProcessorUI/WorkspaceCommand.h"
-#include "MantidQtWidgets/Common/DataProcessorUI/GenericDataProcessorPresenterRowReducerWorker.h"
+#include "MantidQtWidgets/Common/DataProcessorUI/GenerateNotebook.h"
 #include "MantidQtWidgets/Common/DataProcessorUI/GenericDataProcessorPresenterGroupReducerWorker.h"
+#include "MantidQtWidgets/Common/DataProcessorUI/GenericDataProcessorPresenterRowReducerWorker.h"
 #include "MantidQtWidgets/Common/DataProcessorUI/GenericDataProcessorPresenterThread.h"
-#include "MantidQtWidgets/Common/ParseKeyValueString.h"
 #include "MantidQtWidgets/Common/DataProcessorUI/QtDataProcessorOptionsDialog.h"
+#include "MantidQtWidgets/Common/DataProcessorUI/WorkspaceCommand.h"
+#include "MantidQtWidgets/Common/ParseKeyValueString.h"
 #include "MantidQtWidgets/Common/ProgressableView.h"
 
 #include <QHash>
@@ -229,9 +229,9 @@ GenericDataProcessorPresenter::~GenericDataProcessorPresenter() {}
 namespace {
 std::set<std::string> toStdStringSet(std::set<QString> in) {
   auto out = std::set<std::string>();
-  std::transform(std::begin(in), std::end(in), std::inserter(out, out.begin()),
-                 [](QString const &inStr)
-                     -> std::string { return inStr.toStdString(); });
+  std::transform(
+      std::begin(in), std::end(in), std::inserter(out, out.begin()),
+      [](QString const &inStr) -> std::string { return inStr.toStdString(); });
   return out;
 }
 }
@@ -335,7 +335,7 @@ void GenericDataProcessorPresenter::process() {
     // Set group as unprocessed if settings have changed or the expected output
     // workspace cannot be found
     bool groupWSFound = workspaceExists(
-        getPostprocessedWorkspaceName(item.second, m_postprocessor.prefix()));
+        getPostprocessedWorkspaceName(item.second, m_postprocessor.prefix(), m_postprocessor.suffix()));
 
     if (settingsChanged || !groupWSFound)
       m_manager->setProcessed(false, item.first);
@@ -358,7 +358,7 @@ void GenericDataProcessorPresenter::process() {
       for (auto i = 0u;
            i < m_processor.numberOfOutputProperties() && rowWSFound; i++) {
         rowWSFound = workspaceExists(
-            getReducedWorkspaceName(data.second, m_processor.prefix(i)));
+            getReducedWorkspaceName(data.second, m_processor.prefix(i), m_processor.suffix(i)));
       }
 
       if (settingsChanged || !rowWSFound)
@@ -588,14 +588,14 @@ void GenericDataProcessorPresenter::postProcessGroup(
 
   // The name to call the post-processed ws
   auto const outputWSName =
-      getPostprocessedWorkspaceName(groupData, m_postprocessor.prefix());
+      getPostprocessedWorkspaceName(groupData, m_postprocessor.prefix(), m_postprocessor.suffix());
 
   // Go through each row and get the input ws names
   for (auto const &row : groupData) {
 
     // The name of the reduced workspace for this row
     auto const inputWSName =
-        getReducedWorkspaceName(row.second, m_processor.prefix(0));
+        getReducedWorkspaceName(row.second, m_processor.prefix(0), m_processor.suffix(0));
 
     if (workspaceExists(inputWSName)) {
       inputNames.append(inputWSName);
@@ -668,15 +668,19 @@ Workspace_sptr GenericDataProcessorPresenter::prepareRunWorkspace(
   if (runs.isEmpty())
     throw std::runtime_error("No runs given");
 
+  auto stripWhitespace = [](QString const &str) -> QString {
+    return str.simplified().remove(' ');
+  };
+
   // Remove leading/trailing whitespace from each run
   std::transform(runs.begin(), runs.end(), runs.begin(),
-                 [](QString in) -> QString { return in.trimmed(); });
+                 [stripWhitespace](QString in) -> QString { return stripWhitespace(in); });
 
   // If we're only given one run, just return that
   if (runs.size() == 1)
     return getRun(runs[0], instrument, preprocessor.prefix());
 
-  auto const outputName = preprocessor.prefix() + runs.join("_");
+  auto const outputName = preprocessor.prefix() + stripWhitespace(runStr);
 
   /* Ideally, this should be executed as a child algorithm to keep the ADS tidy,
   * but that doesn't preserve history nicely, so we'll just take care of tidying
@@ -738,7 +742,8 @@ Returns the name of the reduced workspace for a given row
 */
 QString
 GenericDataProcessorPresenter::getReducedWorkspaceName(const QStringList &data,
-                                                       const QString &prefix) {
+                                                       const QString &prefix,
+                                                       const QString &suffix) {
 
   if (static_cast<int>(data.size()) != m_columns)
     throw std::invalid_argument("Can't find reduced workspace name");
@@ -757,7 +762,6 @@ GenericDataProcessorPresenter::getReducedWorkspaceName(const QStringList &data,
   QStringList names;
 
   for (int col = 0; col < m_columns; col++) {
-
     // Do we want to use this column to generate the name of the output ws?
     if (m_whitelist.showValue(col)) {
 
@@ -766,16 +770,14 @@ GenericDataProcessorPresenter::getReducedWorkspaceName(const QStringList &data,
 
       // If it's not empty, use it
       if (!valueStr.isEmpty()) {
-        // But we may have things like '1+2' which we want to replace with '1_2'
-        auto value = valueStr.split("+", QString::SkipEmptyParts);
-        names.append(m_whitelist.prefix(col) + value.join("_"));
+        names.append(m_whitelist.prefix(col) + valueStr + m_whitelist.suffix(col));
       }
     }
   } // Columns
 
   auto wsname = prefix;
   wsname += names.join("_");
-  return wsname;
+  return wsname + suffix;
 }
 
 /**
@@ -785,7 +787,7 @@ Returns the name of the reduced workspace for a given group
 @returns : The name of the workspace
 */
 QString GenericDataProcessorPresenter::getPostprocessedWorkspaceName(
-    const GroupData &groupData, const QString &prefix) {
+    const GroupData &groupData, const QString &prefix, const QString& suffix) {
 
   if (!m_postprocess)
     return QString();
@@ -798,7 +800,7 @@ QString GenericDataProcessorPresenter::getPostprocessedWorkspaceName(
   for (const auto &data : groupData) {
     outputNames.append(getReducedWorkspaceName(data.second));
   }
-  return prefix + outputNames.join("_");
+  return prefix + outputNames.join("_") + suffix;
 }
 
 /** Loads a run found from disk or AnalysisDataService
@@ -1035,7 +1037,7 @@ void GenericDataProcessorPresenter::reduceRow(RowData *data) {
   /* We need to give a name to the output workspaces */
   for (auto i = 0u; i < m_processor.numberOfOutputProperties(); i++) {
     setAlgorithmProperty(alg.get(), m_processor.outputPropertyName(i),
-                         getReducedWorkspaceName(*data, m_processor.prefix(i)));
+                         getReducedWorkspaceName(*data, m_processor.prefix(i), m_processor.suffix(i)));
   }
 
   /* Now run the processing algorithm */
@@ -1059,8 +1061,9 @@ void GenericDataProcessorPresenter::reduceRow(RowData *data) {
                             ? propValue.right(propValue.indexOf("e"))
                             : "";
           propValue =
-              propValue.mid(0, propValue.indexOf(".") +
-                                   m_options["RoundPrecision"].toInt() + 1) +
+              propValue.mid(0,
+                            propValue.indexOf(".") +
+                                m_options["RoundPrecision"].toInt() + 1) +
               exp;
         }
 
@@ -1461,7 +1464,7 @@ void GenericDataProcessorPresenter::plotRow() {
     for (const auto &run : item.second) {
 
       auto const wsName =
-          getReducedWorkspaceName(run.second, m_processor.prefix(0));
+          getReducedWorkspaceName(run.second, m_processor.prefix(0), m_processor.suffix(0));
 
       if (workspaceExists(wsName))
         workspaces.insert(wsName, nullptr);
@@ -1508,7 +1511,7 @@ void GenericDataProcessorPresenter::plotGroup() {
   for (const auto &item : items) {
     if (item.second.size() > 1) {
       auto const wsName =
-          getPostprocessedWorkspaceName(item.second, m_postprocessor.prefix());
+          getPostprocessedWorkspaceName(item.second, m_postprocessor.prefix(), m_postprocessor.suffix());
 
       if (workspaceExists(wsName))
         workspaces.insert(wsName, nullptr);

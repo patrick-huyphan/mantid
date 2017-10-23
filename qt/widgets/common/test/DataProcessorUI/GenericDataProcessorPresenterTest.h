@@ -124,15 +124,15 @@ private:
     return ProcessingAlgorithm(
         "ReflectometryReductionOneAuto",
         std::vector<QString>{"IvsQ_binned_", "IvsQ_", "IvsLam_"},
+        std::vector<QString>{"", "", ""},
         std::set<QString>{"ThetaIn", "ThetaOut", "InputWorkspace",
                           "OutputWorkspace", "OutputWorkspaceWavelength",
                           "FirstTransmissionRun", "SecondTransmissionRun"});
   }
 
   PostprocessingAlgorithm createReflectometryPostprocessor() {
-
     return PostprocessingAlgorithm(
-        "Stitch1DMany", "IvsQ_",
+        "Stitch1DMany", "IvsQ_", "",
         std::set<QString>{"InputWorkspaces", "OutputWorkspace"});
   }
 

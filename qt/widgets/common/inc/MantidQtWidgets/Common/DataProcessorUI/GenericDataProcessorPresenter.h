@@ -124,10 +124,12 @@ public:
   WhiteList getWhiteList() const { return m_whitelist; };
   // Get the name of the reduced workspace for a given row
   QString getReducedWorkspaceName(const QStringList &data,
-                                  const QString &prefix = "");
+                                  const QString &prefix = "",
+                                  const QString &suffix = "");
   // Get the name of a post-processed workspace
   QString getPostprocessedWorkspaceName(const GroupData &groupData,
-                                        const QString &prefix = "");
+                                        const QString &prefix = "",
+                                        const QString &suffix = "");
 
   ParentItems selectedParents() const override;
   ChildItems selectedChildren() const override;

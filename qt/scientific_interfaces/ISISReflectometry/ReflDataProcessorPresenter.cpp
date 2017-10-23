@@ -3,12 +3,13 @@
 #include "MantidAPI/IEventWorkspace.h"
 #include "MantidAPI/MatrixWorkspace.h"
 #include "MantidAPI/Run.h"
-#include "MantidQtWidgets/Common/DataProcessorUI/TreeManager.h"
 #include "MantidQtWidgets/Common/DataProcessorUI/DataProcessorView.h"
+#include "MantidQtWidgets/Common/DataProcessorUI/TreeManager.h"
 #include "MantidQtWidgets/Common/ParseKeyValueString.h"
 #include "MantidQtWidgets/Common/ParseNumerics.h"
 #include "MantidQtWidgets/Common/ProgressPresenter.h"
 #include "ReflFromStdStringMap.h"
+#include <algorithm>
 
 using namespace MantidQt::MantidWidgets::DataProcessor;
 using namespace MantidQt::MantidWidgets;
@@ -182,6 +183,26 @@ bool ReflDataProcessorPresenter::loadGroup(const GroupData &group) {
   return true;
 }
 
+auto ReflDataProcessorPresenter::parseTimeSlicingType(QString const &type)
+    -> TimeSlicingType {
+  if (type == "Custom")
+    return TimeSlicingType::Custom;
+  else if (type == "LogValue")
+    return TimeSlicingType::LogValue;
+  else if (type == "Uniform")
+    return TimeSlicingType::Uniform;
+  else if (type == "UniformEven")
+    return TimeSlicingType::UniformEven;
+  else
+    throw std::runtime_error("Unknown time slicing type " + type.toStdString() +
+                             ".");
+}
+
+bool ReflDataProcessorPresenter::isUniform(TimeSlicingType type) const {
+  return type == TimeSlicingType::Uniform ||
+         type == TimeSlicingType::UniformEven;
+}
+
 /** Processes a group of runs
 *
 * @param groupID :: An integer number indicating the id of this group
@@ -191,8 +212,10 @@ bool ReflDataProcessorPresenter::loadGroup(const GroupData &group) {
 * @return :: true if errors were encountered
 */
 bool ReflDataProcessorPresenter::processGroupAsEventWS(
-    int groupID, const GroupData &group, const QString &timeSlicingType,
+    int groupID, const GroupData &group, const QString &typeInput,
     const QString &timeSlicingValues) {
+
+  auto type = parseTimeSlicingType(typeInput);
 
   bool errors = false;
   bool multiRow = group.size() > 1;
@@ -202,10 +225,13 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
   QString logFilter; // Set if we are slicing by log value
 
   // For custom/log value slicing the start/stop times are the same for all rows
-  if (timeSlicingType == "Custom")
-    parseCustom(timeSlicingValues, startTimes, stopTimes);
-  if (timeSlicingType == "LogValue")
-    parseLogValue(timeSlicingValues, logFilter, startTimes, stopTimes);
+  if (type == TimeSlicingType::Custom)
+    std::tie(startTimes, stopTimes) = parseCustom(timeSlicingValues);
+  if (type == TimeSlicingType::LogValue)
+    std::tie(startTimes, stopTimes, logFilter) =
+        parseLogValue(timeSlicingValues);
+  else if (isUniform(type)) {
+  }
 
   for (const auto &row : group) {
 
@@ -213,10 +239,10 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
     const auto data = row.second;  // Vector containing data for this row
     auto runNo = row.second.at(0); // The run number
 
-    if (timeSlicingType == "UniformEven" || timeSlicingType == "Uniform") {
-      const QString runName = "TOF_" + runNo;
-      parseUniform(timeSlicingValues, timeSlicingType, runName, startTimes,
-                   stopTimes);
+    if (isUniform(type)) {
+      const auto runName = "TOF_" + runNo;
+      std::tie(startTimes, stopTimes) =
+          parseUniform(type, timeSlicingValues, runName);
     }
 
     size_t numSlices = startTimes.size();
@@ -238,7 +264,7 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
 
     // For uniform slicing with multiple rows only the minimum number of slices
     // are common to each row
-    if (multiRow && timeSlicingType == "Uniform")
+    if (multiRow && type == TimeSlicingType::Uniform)
       numGroupSlices = std::min(numGroupSlices, numSlices);
   }
 
@@ -246,7 +272,7 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
   if (multiRow) {
 
     // All slices are common for uniform even, custom and log value slicing
-    if (timeSlicingType != "Uniform")
+    if (type != TimeSlicingType::Uniform)
       numGroupSlices = startTimes.size();
 
     addNumGroupSlicesEntry(groupID, numGroupSlices);
@@ -256,7 +282,7 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
       QStringList data;
       for (const auto &row : group) {
         data = row.second;
-        data[0] = row.second[0] + "_slice_" + QString::number(i);
+        data[0] = row.second[0] + sliceSuffix(startTimes[i], stopTimes[i]);
         groupNew[row.first] = data;
       }
       try {
@@ -335,6 +361,32 @@ ReflDataProcessorPresenter::retrieveWorkspaceOrCritical(
   }
 }
 
+QString ReflDataProcessorPresenter::sliceSuffix(double startTime,
+                                                double endTime) const {
+  return QString::number(startTime) + "_to_" + QString::number(endTime);
+}
+
+std::pair<int, double> ReflDataProcessorPresenter::numberOfSlicesAndDuration(
+    const QString &timeSlicing, TimeSlicingType slicingType,
+    double totalDurationInSeconds) {
+  switch (slicingType) {
+  case TimeSlicingType::UniformEven: {
+    auto numberOfSlices = parseDenaryInteger(timeSlicing);
+    auto sliceDuration = totalDurationInSeconds / numberOfSlices;
+    return std::make_pair(numberOfSlices, sliceDuration);
+  }
+  case TimeSlicingType::Uniform: {
+    auto sliceDuration = parseDouble(timeSlicing);
+    auto numberOfSlices =
+        static_cast<int>(ceil(totalDurationInSeconds / sliceDuration));
+    return std::make_pair(numberOfSlices, sliceDuration);
+  }
+  default:
+    throw std::runtime_error("Cannot calculate number of slices and slice "
+                             "duration for non uniform slicing type.");
+  }
+}
+
 /** Parses a string to extract uniform time slicing
  *
  * @param timeSlicing :: The string to parse
@@ -343,36 +395,31 @@ ReflDataProcessorPresenter::retrieveWorkspaceOrCritical(
  * @param startTimes :: Start times for the set of slices
  * @param stopTimes :: Stop times for the set of slices
  */
-void ReflDataProcessorPresenter::parseUniform(const QString &timeSlicing,
-                                              const QString &slicingType,
-                                              const QString &wsName,
-                                              std::vector<double> &startTimes,
-                                              std::vector<double> &stopTimes) {
-
+auto ReflDataProcessorPresenter::parseUniform(TimeSlicingType slicingType,
+                                              const QString &timeSlicing,
+                                              const QString &wsName)
+    -> std::tuple<std::vector<double>, std::vector<double>> {
   IEventWorkspace_sptr mws = retrieveWorkspaceOrCritical(wsName);
   if (mws != nullptr) {
     const auto run = mws->run();
     const auto totalDuration = run.endTime() - run.startTime();
-    double totalDurationSec = totalDuration.total_seconds();
     double sliceDuration = .0;
     int numSlices = 0;
 
-    if (slicingType == "UniformEven") {
-      numSlices = parseDenaryInteger(timeSlicing);
-      sliceDuration = totalDurationSec / numSlices;
-    } else if (slicingType == "Uniform") {
-      sliceDuration = parseDouble(timeSlicing);
-      numSlices = static_cast<int>(ceil(totalDurationSec / sliceDuration));
-    }
+    std::tie(numSlices, sliceDuration) = numberOfSlicesAndDuration(
+        timeSlicing, slicingType, totalDuration.total_seconds());
 
     // Add the start/stop times
-    startTimes = std::vector<double>(numSlices);
-    stopTimes = std::vector<double>(numSlices);
+    auto startTimes = std::vector<double>(numSlices);
+    auto stopTimes = std::vector<double>(numSlices);
 
     for (int i = 0; i < numSlices; i++) {
       startTimes[i] = sliceDuration * i;
       stopTimes[i] = sliceDuration * (i + 1);
     }
+    return std::make_tuple(startTimes, stopTimes);
+  } else {
+    return std::make_tuple(std::vector<double>(), std::vector<double>());
   }
 }
 
@@ -382,10 +429,8 @@ void ReflDataProcessorPresenter::parseUniform(const QString &timeSlicing,
  * @param startTimes :: Start times for the set of slices
  * @param stopTimes :: Stop times for the set of slices
  */
-void ReflDataProcessorPresenter::parseCustom(const QString &timeSlicing,
-                                             std::vector<double> &startTimes,
-                                             std::vector<double> &stopTimes) {
-
+auto ReflDataProcessorPresenter::parseCustom(const QString &timeSlicing)
+    -> std::tuple<std::vector<double>, std::vector<double>> {
   auto timeStr = timeSlicing.split(",");
   std::vector<double> times;
   std::transform(timeStr.begin(), timeStr.end(), std::back_inserter(times),
@@ -394,8 +439,8 @@ void ReflDataProcessorPresenter::parseCustom(const QString &timeSlicing,
   size_t numSlices = times.size() > 1 ? times.size() - 1 : 1;
 
   // Add the start/stop times
-  startTimes = std::vector<double>(numSlices);
-  stopTimes = std::vector<double>(numSlices);
+  auto startTimes = std::vector<double>(numSlices);
+  auto stopTimes = std::vector<double>(numSlices);
 
   if (times.size() == 1) {
     startTimes[0] = 0;
@@ -406,6 +451,8 @@ void ReflDataProcessorPresenter::parseCustom(const QString &timeSlicing,
       stopTimes[i] = times[i + 1];
     }
   }
+
+  return std::make_tuple(std::move(startTimes), std::move(stopTimes));
 }
 
 /** Parses a string to extract log value filter and time slicing
@@ -415,16 +462,14 @@ void ReflDataProcessorPresenter::parseCustom(const QString &timeSlicing,
  * @param startTimes :: Start times for the set of slices
  * @param stopTimes :: Stop times for the set of slices
  */
-void ReflDataProcessorPresenter::parseLogValue(const QString &inputStr,
-                                               QString &logFilter,
-                                               std::vector<double> &startTimes,
-                                               std::vector<double> &stopTimes) {
-
+std::tuple<std::vector<double>, std::vector<double>, QString>
+ReflDataProcessorPresenter::parseLogValue(const QString &inputStr) {
   auto strMap = fromStdStringMap(parseKeyValueString(inputStr.toStdString()));
   QString timeSlicing = strMap.at("Slicing");
-  logFilter = strMap.at("LogFilter");
-
-  parseCustom(timeSlicing, startTimes, stopTimes);
+  std::vector<double> startTimes, stopTimes;
+  std::tie(startTimes, stopTimes) = parseCustom(timeSlicing);
+  return std::make_tuple(std::move(startTimes), std::move(stopTimes),
+                         strMap.at("LogFilter"));
 }
 
 bool ReflDataProcessorPresenter::workspaceExists(
@@ -508,19 +553,17 @@ QString ReflDataProcessorPresenter::loadRun(const QString &run,
 /** Takes a slice from a run and puts the 'sliced' workspace into the ADS
 *
 * @param runNo :: The run number as a string
-* @param sliceIndex :: The index of the slice being taken
 * @param startTime :: Start time
 * @param stopTime :: Stop time
 * @param logFilter :: The log filter to use if slicing by log value
 * @return :: the name of the sliced workspace (without prefix 'TOF_')
 */
 QString ReflDataProcessorPresenter::takeSlice(const QString &runNo,
-                                              size_t sliceIndex,
                                               double startTime, double stopTime,
                                               const QString &logFilter) {
 
   QString runName = "TOF_" + runNo;
-  QString sliceName = runName + "_slice_" + QString::number(sliceIndex);
+  QString sliceName = runName + sliceSuffix(startTime, stopTime);
   QString monName = runName + "_monitors";
   QString filterAlg = logFilter.isEmpty() ? "FilterByTime" : "FilterByLogValue";
 
@@ -603,11 +646,9 @@ void ReflDataProcessorPresenter::plotRow() {
   QSet<QString> notFound;
 
   for (const auto &item : items) {
-
     for (const auto &run : item.second) {
-
       const size_t numSlices = m_numSlicesMap.at(item.first).at(run.first);
-      const auto wsName = getReducedWorkspaceName(run.second, "IvsQ_");
+      const auto wsName = getReducedWorkspaceName(run.second, "", "IvsQ_");
 
       for (size_t slice = 0; slice < numSlices; slice++) {
         const auto sliceName = wsName + "_slice_" + QString::number(slice);
@@ -634,14 +675,16 @@ void ReflDataProcessorPresenter::plotRow() {
 * @returns : The name of the workspace
 */
 QString ReflDataProcessorPresenter::getPostprocessedWorkspaceName(
-    const GroupData &groupData, const QString &prefix, size_t index) {
-
+    const GroupData &groupData, const QString &prefix, double startTime,
+    double endTime) {
   QStringList outputNames;
-
-  for (const auto &data : groupData) {
-    outputNames.append(getReducedWorkspaceName(data.second) + "_slice_" +
-                       QString::number(index));
-  }
+  std::transform(groupData.cbegin(), groupData.cend(),
+                 std::back_inserter(outputNames),
+                 [this, startTime,
+                  endTime](std::pair<int, RowData> const &row) -> QString {
+                   return getReducedWorkspaceName(row.second) +
+                          sliceSuffix(startTime, endTime);
+                 });
   return prefix + outputNames.join("_");
 }
 
@@ -665,13 +708,9 @@ void ReflDataProcessorPresenter::plotGroup() {
   QSet<QString> notFound;
 
   for (const auto &item : items) {
-
     if (item.second.size() > 1) {
-
-      size_t numSlices = m_numGroupSlicesMap.at(item.first);
-
-      for (size_t slice = 0; slice < numSlices; slice++) {
-
+      auto numSlices = m_numGroupSlicesMap.at(item.first);
+      for (auto slice = 0ul; slice < numSlices; slice++) {
         const auto wsName =
             getPostprocessedWorkspaceName(item.second, "IvsQ_", slice);
 

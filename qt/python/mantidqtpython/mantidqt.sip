@@ -1501,7 +1501,7 @@ class WhiteList
 %End
 public:
 WhiteList();
-void addElement(const QString &, const QString &, const QString &, bool showValue = false, const QString &prefix = "");
+void addElement(const QString &, const QString &, const QString &, bool showValue = false, const QString& prefix = "", const QString& suffix = "");
 };
 
 class PreprocessMap

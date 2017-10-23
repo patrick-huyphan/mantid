@@ -73,7 +73,9 @@ ReflGenericDataProcessorPresenterFactory::create() {
       /*The name of the algorithm */
       "ReflectometryReductionOneAuto",
       /*Prefixes to the output workspaces*/
-      std::vector<QString>{"IvsQ_binned_", "IvsQ_", "IvsLam_"},
+      std::vector<QString>{"", "", ""},
+      /*Suffixes to the output workspaces*/
+      std::vector<QString>{"_IvsQ_binned", "_IvsQ", "_IvsLam"},
       /*The blacklist*/
       std::set<QString>{"ThetaIn", "ThetaOut", "InputWorkspace",
                         "OutputWorkspace", "OutputWorkspaceBinned",
@@ -101,7 +103,7 @@ ReflGenericDataProcessorPresenterFactory::create() {
 
   // The post-processing algorithm
   PostprocessingAlgorithm postprocessor(
-      "Stitch1DMany", "IvsQ_",
+      "Stitch1DMany", "", "_IvsQ",
       std::set<QString>{"InputWorkspaces", "OutputWorkspace"});
 
   // Post-processing instructions linking column names to properties of the

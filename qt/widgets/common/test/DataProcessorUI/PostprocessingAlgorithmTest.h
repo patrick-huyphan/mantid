@@ -48,13 +48,14 @@ public:
   void test_Stitch1DMany() {
 
     auto stitch = PostprocessingAlgorithm(
-        "Stitch1DMany", "IvsQ_",
+        "Stitch1DMany", "prefix_", "_suffix",
         std::set<QString>{"InputWorkspaces", "OutputWorkspace"});
     TS_ASSERT_EQUALS(stitch.name(), "Stitch1DMany");
     TS_ASSERT_EQUALS(stitch.inputProperty(), "InputWorkspaces");
     TS_ASSERT_EQUALS(stitch.outputProperty(), "OutputWorkspace");
     TS_ASSERT_EQUALS(stitch.numberOfOutputProperties(), 1);
-    TS_ASSERT_EQUALS(stitch.prefix(), "IvsQ_");
+    TS_ASSERT_EQUALS(stitch.prefix(), "prefix_");
+    TS_ASSERT_EQUALS(stitch.suffix(), "_suffix");
     std::set<QString> blacklist = {"InputWorkspaces", "OutputWorkspace"};
     TS_ASSERT_EQUALS(stitch.blacklist(), blacklist);
   }

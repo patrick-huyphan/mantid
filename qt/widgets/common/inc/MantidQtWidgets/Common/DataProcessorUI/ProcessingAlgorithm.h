@@ -1,8 +1,8 @@
 #ifndef MANTIDQTMANTIDWIDGETS_DATAPROCESSORPROCESSINGALGORITHM_H
 #define MANTIDQTMANTIDWIDGETS_DATAPROCESSORPROCESSINGALGORITHM_H
 
-#include "MantidQtWidgets/Common/DllOption.h"
 #include "MantidQtWidgets/Common/DataProcessorUI/ProcessingAlgorithmBase.h"
+#include "MantidQtWidgets/Common/DllOption.h"
 
 #include <QString>
 
@@ -41,17 +41,20 @@ class EXPORT_OPT_MANTIDQT_COMMON ProcessingAlgorithm
 public:
   ProcessingAlgorithm();
   // Constructor
-  ProcessingAlgorithm(const QString &name, const std::vector<QString> &prefix,
+  ProcessingAlgorithm(const QString &name, std::vector<QString> prefix,
+                      std::vector<QString> suffix,
                       const std::set<QString> &blacklist = std::set<QString>());
   // Delegating constructor
   ProcessingAlgorithm(const QString &name, const QString &prefix,
-                      const QString &blacklist = "");
+                      const QString &suffix, const QString &blacklist = "");
   // Destructor
   virtual ~ProcessingAlgorithm();
   // The number of output properties
   size_t numberOfOutputProperties() const;
   // The prefix for this output property
   QString prefix(size_t index) const;
+  // The suffix for this output property
+  QString suffix(size_t index) const;
   // The name of this input property
   QString inputPropertyName(size_t index) const;
   // The name of this output property
@@ -60,6 +63,8 @@ public:
 private:
   // The prefix of the output workspace(s)
   std::vector<QString> m_prefix;
+  // The suffix of the output workspace(s)
+  std::vector<QString> m_suffix;
   // The names of the input workspace properties
   std::vector<QString> m_inputProperties;
   // The names of the output workspace properties

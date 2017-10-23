@@ -192,19 +192,27 @@ public:
         presenter->notify(DataProcessorPresenter::ProcessFlag));
 
     // Check output workspaces were created as expected
+    auto printExistingWorkspaces = []() -> void {
+        auto map = AnalysisDataService::Instance().topLevelItems();
+        for(auto&& item : map)
+            std::cout << item.first << std::endl;
+    };
+
+    printExistingWorkspaces();
+
     for (size_t i = 0; i < 3; i++) {
       std::string sliceIndex = std::to_string(i);
 
-      TS_ASSERT(workspaceExists("IvsLam_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsLam_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex +
-                                "_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("TOF_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("TOF_13462_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_0_to_2_IvsLam" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_3_to_5_IvsLam" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ" + sliceIndex +
+                                "_13462" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_binned" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_binned" + sliceIndex));
+      TS_ASSERT(workspaceExists("TOF_13460" + sliceIndex));
+      TS_ASSERT(workspaceExists("TOF_13462" + sliceIndex));
     }
     TS_ASSERT(workspaceExists("TOF_13460"));
     TS_ASSERT(workspaceExists("TOF_13462"));
@@ -282,14 +290,14 @@ public:
     for (size_t i = 0; i < 3; i++) {
       std::string sliceIndex = std::to_string(i);
 
-      TS_ASSERT(workspaceExists("IvsLam_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsLam_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex +
+      TS_ASSERT(workspaceExists("13460_IvsLam_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsLam_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_slice_" + sliceIndex +
                                 "_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13462_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_binned_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_binned_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13460_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13462_slice_" + sliceIndex));
     }
@@ -298,9 +306,9 @@ public:
     for (size_t i = 3; i < 4; i++) {
       std::string sliceIndex = std::to_string(i);
 
-      TS_ASSERT(workspaceExists("IvsLam_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13462_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsLam_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_binned_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13462_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13462_slice_" + sliceIndex));
     }
@@ -380,14 +388,14 @@ public:
     for (size_t i = 0; i < 3; i++) {
       std::string sliceIndex = std::to_string(i);
 
-      TS_ASSERT(workspaceExists("IvsLam_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsLam_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex +
+      TS_ASSERT(workspaceExists("13460_IvsLam_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsLam_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_slice_" + sliceIndex +
                                 "_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13462_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_binned_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_binned_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13460_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13462_slice_" + sliceIndex));
     }
@@ -467,14 +475,14 @@ public:
     for (size_t i = 0; i < 3; i++) {
       std::string sliceIndex = std::to_string(i);
 
-      TS_ASSERT(workspaceExists("IvsLam_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsLam_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_13460_slice_" + sliceIndex +
+      TS_ASSERT(workspaceExists("13460_IvsLam_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsLam_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_slice_" + sliceIndex +
                                 "_13462_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13460_slice_" + sliceIndex));
-      TS_ASSERT(workspaceExists("IvsQ_binned_13462_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13460_IvsQ_binned_slice_" + sliceIndex));
+      TS_ASSERT(workspaceExists("13462_IvsQ_binned_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13460_slice_" + sliceIndex));
       TS_ASSERT(workspaceExists("TOF_13462_slice_" + sliceIndex));
     }
@@ -643,12 +651,12 @@ public:
     presenter->addNumGroupSlicesEntry(0, 3);
     presenter->addNumGroupSlicesEntry(1, 3);
 
-    createSampleEventWS("IvsQ_13460_slice_0");
-    createSampleEventWS("IvsQ_13460_slice_1");
-    createSampleEventWS("IvsQ_13460_slice_2");
-    createSampleEventWS("IvsQ_13462_slice_0");
-    createSampleEventWS("IvsQ_13462_slice_1");
-    createSampleEventWS("IvsQ_13462_slice_2");
+    createSampleEventWS("13460_IvsQ_slice_0");
+    createSampleEventWS("13460_IvsQ_slice_1");
+    createSampleEventWS("13460_IvsQ_slice_2");
+    createSampleEventWS("13462_IvsQ_slice_0");
+    createSampleEventWS("13462_IvsQ_slice_1");
+    createSampleEventWS("13462_IvsQ_slice_2");
 
     std::map<int, std::set<int>> rowlist;
     rowlist[0].insert(0);
@@ -669,17 +677,17 @@ public:
         .WillOnce(Return("0,10,20,30"));
 
     auto const pythonCode = QString(
-        "base_graph = None\nbase_graph = plotSpectrum(\"IvsQ_13460_slice_0\", "
+        "base_graph = None\nbase_graph = plotSpectrum(\"13460_IvsQ_slice_0\", "
         "0, True, window = base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13460_slice_1\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13460_IvsQ_slice_1\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13460_slice_2\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13460_IvsQ_slice_2\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13462_slice_0\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13462_IvsQ_slice_0\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13462_slice_1\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13462_IvsQ_slice_1\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13462_slice_2\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13462_IvsQ_slice_2\", 0, True, window = "
         "base_graph)\nbase_graph.activeLayer().logLogAxes()\n");
 
     EXPECT_CALL(mockDataProcessorView, runPythonAlgorithm(pythonCode)).Times(1);
@@ -719,12 +727,12 @@ public:
     presenter->addNumGroupSlicesEntry(0, 3);
     presenter->addNumGroupSlicesEntry(1, 3);
 
-    createSampleEventWS("IvsQ_13460_slice_0");
-    createSampleEventWS("IvsQ_13460_slice_1");
-    createSampleEventWS("IvsQ_13460_slice_2");
-    createSampleEventWS("IvsQ_13462_slice_0");
-    createSampleEventWS("IvsQ_13462_slice_1");
-    createSampleEventWS("IvsQ_13462_slice_2");
+    createSampleEventWS("13460_IvsQ_slice_0");
+    createSampleEventWS("13460_IvsQ_slice_1");
+    createSampleEventWS("13460_IvsQ_slice_2");
+    createSampleEventWS("13462_IvsQ_slice_0");
+    createSampleEventWS("13462_IvsQ_slice_1");
+    createSampleEventWS("13462_IvsQ_slice_2");
 
     std::set<int> groupList;
     groupList.insert(0);
@@ -744,17 +752,17 @@ public:
         .WillOnce(Return("0,10,20,30"));
 
     auto const pythonCode = QString(
-        "base_graph = None\nbase_graph = plotSpectrum(\"IvsQ_13460_slice_0\", "
+        "base_graph = None\nbase_graph = plotSpectrum(\"13460_IvsQ_slice_0\", "
         "0, True, window = base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13460_slice_1\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13460_IvsQ_slice_1\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13460_slice_2\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13460_IvsQ_slice_2\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13462_slice_0\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13462_IvsQ_slice_0\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13462_slice_1\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13462_IvsQ_slice_1\", 0, True, window = "
         "base_graph)\n"
-        "base_graph = plotSpectrum(\"IvsQ_13462_slice_2\", 0, True, window = "
+        "base_graph = plotSpectrum(\"13462_IvsQ_slice_2\", 0, True, window = "
         "base_graph)\nbase_graph.activeLayer().logLogAxes()\n");
 
     EXPECT_CALL(mockDataProcessorView, runPythonAlgorithm(pythonCode)).Times(1);

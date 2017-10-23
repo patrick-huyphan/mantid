@@ -1,10 +1,10 @@
 #ifndef MANTID_ISISREFLECTOMETRY_REFLDATAPROCESSORPRESENTER_H
 #define MANTID_ISISREFLECTOMETRY_REFLDATAPROCESSORPRESENTER_H
 
-#include "MantidQtWidgets/Common/DataProcessorUI/GenericDataProcessorPresenter.h"
-#include "MantidQtWidgets/Common/DataProcessorUI/DataProcessorMainPresenter.h"
-#include "MantidQtWidgets/Common/DataProcessorUI/TreeManager.h"
 #include "MantidAPI/IEventWorkspace_fwd.h"
+#include "MantidQtWidgets/Common/DataProcessorUI/DataProcessorMainPresenter.h"
+#include "MantidQtWidgets/Common/DataProcessorUI/GenericDataProcessorPresenter.h"
+#include "MantidQtWidgets/Common/DataProcessorUI/TreeManager.h"
 
 #include "DllConfig.h"
 
@@ -53,6 +53,7 @@ public:
       const QString &loader = "Load");
   ~ReflDataProcessorPresenter() override;
 
+  QString sliceSuffix(double startTime, double endTime) const;
   // The following methods are public for testing purposes only
   // Add entry for the number of slices for a row in a group
   void addNumSlicesEntry(int groupID, int rowID, size_t numSlices);
@@ -70,7 +71,9 @@ private:
                   const QString &prefix, const QString &loader, bool &runFound);
   // Get the name of a post-processed workspace
   QString getPostprocessedWorkspaceName(const GroupData &groupData,
-                                        const QString &prefix, size_t index);
+                                        const QString &prefix,
+                                        double startTime,
+                                        double endTime);
   // Loads a group of runs
   bool loadGroup(const GroupData &group);
   // Process a group of runs which are event workspaces
@@ -80,17 +83,29 @@ private:
   // Process a group of runs which are not event workspaces
   bool processGroupAsNonEventWS(int groupID, GroupData &group);
 
+  // Enumeration of possible time slicing calculation methods
+  enum class TimeSlicingType { Custom, LogValue, Uniform, UniformEven };
+
+  // Obtains the time slicing type from a user input string.
+  TimeSlicingType parseTimeSlicingType(QString const &type);
+
+  // Checks if the time slicing type is Uniform or UniformEven
+  bool isUniform(TimeSlicingType type) const;
+
+  static std::pair<int, double> numberOfSlicesAndDuration(
+    const QString &timeSlicing, TimeSlicingType slicingType,
+    double totalDurationInSeconds);
   // Parse uniform / uniform even time slicing from input string
-  void parseUniform(const QString &timeSlicing, const QString &slicingType,
-                    const QString &wsName, std::vector<double> &startTimes,
-                    std::vector<double> &stopTimes);
+  std::tuple<std::vector<double>, std::vector<double>>
+  parseUniform(TimeSlicingType timeSlicing, const QString &slicingType,
+               const QString &wsName);
   // Parse custom time slicing from input string
-  void parseCustom(const QString &timeSlicing, std::vector<double> &startTimes,
-                   std::vector<double> &stopTimes);
+  std::tuple<std::vector<double>, std::vector<double>>
+  parseCustom(const QString &timeSlicing);
   // Parse log value slicing and filter from input string
-  void parseLogValue(const QString &inputStr, QString &logFilter,
-                     std::vector<double> &minValues,
-                     std::vector<double> &maxValues);
+  std::tuple<std::vector<double>, std::vector<double>, QString>
+  parseLogValue(const QString &inputStr);
+
   bool workspaceExists(QString const &workspaceName) const;
 
   // Load a run as event workspace

@@ -10,9 +10,9 @@ namespace DataProcessor {
 * @param blacklist : The list of properties we don't want to show
 */
 PostprocessingAlgorithm::PostprocessingAlgorithm(
-    const QString &name, const QString &prefix,
+    const QString &name, const QString &prefix, const QString &suffix,
     const std::set<QString> &blacklist)
-    : ProcessingAlgorithmBase(name, blacklist), m_prefix(prefix) {
+    : ProcessingAlgorithmBase(name, blacklist), m_prefix(prefix), m_suffix(suffix) {
 
   auto inputStrListProperties = getInputStrListProperties();
   if (inputStrListProperties.size() != 1)
@@ -38,12 +38,13 @@ PostprocessingAlgorithm::PostprocessingAlgorithm(
 */
 PostprocessingAlgorithm::PostprocessingAlgorithm(const QString &name,
                                                  const QString &prefix,
+                                                 const QString &suffix,
                                                  const QString &blacklist)
-    : PostprocessingAlgorithm(name, prefix, convertStringToSet(blacklist)) {}
+    : PostprocessingAlgorithm(name, prefix, suffix, convertStringToSet(blacklist)) {}
 
 /** Default constructor: no algorithm defined */
 PostprocessingAlgorithm::PostprocessingAlgorithm()
-    : m_prefix(), m_inputProp(), m_outputProp() {}
+    : m_prefix(), m_suffix(), m_inputProp(), m_outputProp() {}
 
 // Destructor
 PostprocessingAlgorithm::~PostprocessingAlgorithm() {}
@@ -59,6 +60,9 @@ size_t PostprocessingAlgorithm::numberOfOutputProperties() const { return 1; }
 
 // Returns the prefix that will be added to the output ws
 QString PostprocessingAlgorithm::prefix() const { return m_prefix; }
+//
+// Returns the suffix that will be added to the output ws
+QString PostprocessingAlgorithm::suffix() const { return m_suffix; }
 }
 }
 }

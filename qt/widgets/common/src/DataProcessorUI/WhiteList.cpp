@@ -16,12 +16,12 @@ namespace DataProcessor {
 */
 void WhiteList::addElement(const QString &colName, const QString &algProperty,
                            const QString &description, bool showValue,
-                           const QString &prefix) {
+                           const QString &prefix, const QString& suffix) {
 
   m_colIndexToColName.push_back(colName);
   m_colIndexToAlgProp.push_back(algProperty);
   m_showValue.push_back(showValue);
-  m_prefix.push_back(prefix);
+  m_prefixSuffixPairs.push_back(std::make_pair(prefix, suffix));
   m_description.push_back(description);
   m_colNameToColIndex[colName] = m_lastIndex++;
 }
@@ -68,7 +68,8 @@ bool WhiteList::showValue(int index) const { return m_showValue.at(index); }
 * only be used if showValue is true for this column
 * @param index : The column index
 */
-QString WhiteList::prefix(int index) const { return m_prefix.at(index); }
+QString WhiteList::prefix(int index) const { return m_prefixSuffixPairs.at(index).first; }
+QString WhiteList::suffix(int index) const { return m_prefixSuffixPairs.at(index).second; }
 }
 }
 }

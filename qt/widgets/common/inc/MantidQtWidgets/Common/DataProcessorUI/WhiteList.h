@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <QString>
+#include <QPair>
 
 namespace MantidQt {
 namespace MantidWidgets {
@@ -40,16 +41,18 @@ Code Documentation is available at: <http://doxygen.mantidproject.org>
 class EXPORT_OPT_MANTIDQT_COMMON WhiteList {
 public:
   WhiteList() : m_lastIndex(0){};
-  virtual ~WhiteList(){};
+  virtual ~WhiteList() = default;
+  using PrefixSuffixPair = std::pair<QString, QString>;
 
   void addElement(const QString &colName, const QString &algProperty,
                   const QString &description, bool showValue = false,
-                  const QString &prefix = "");
+                  const QString &prefix = "", const QString& suffix = "");
   int colIndexFromColName(const QString &colName) const;
   QString colNameFromColIndex(int index) const;
   QString algPropFromColIndex(int index) const;
   QString description(int index) const;
   QString prefix(int index) const;
+  QString suffix(int index) const;
   bool showValue(int index) const;
   size_t size() const;
 
@@ -59,7 +62,7 @@ private:
   std::vector<QString> m_colIndexToColName;
   std::vector<QString> m_colIndexToAlgProp;
   std::vector<bool> m_showValue;
-  std::vector<QString> m_prefix;
+  std::vector<PrefixSuffixPair> m_prefixSuffixPairs;
   std::vector<QString> m_description;
 };
 }
