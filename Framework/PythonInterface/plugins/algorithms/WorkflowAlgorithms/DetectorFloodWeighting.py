@@ -7,6 +7,7 @@ from mantid.api import DataProcessorAlgorithm, AlgorithmFactory, MatrixWorkspace
 
 from mantid.kernel import Direction, FloatArrayProperty, FloatArrayBoundedValidator
 
+from mantid.simpleapi import CreateSingleValuedWorkspace, Plus, Divide, SolidAngle, Rebin
 
 class DetectorFloodWeighting(DataProcessorAlgorithm):
 
@@ -80,20 +81,6 @@ class DetectorFloodWeighting(DataProcessorAlgorithm):
 
         return issues
 
-    def _divide(self, lhs, rhs):
-        divide = self.createChildAlgorithm("Divide")
-        divide.setProperty("LHSWorkspace", lhs)
-        divide.setProperty("RHSWorkspace", rhs)
-        divide.execute()
-        return divide.getProperty("OutputWorkspace").value
-
-    def _add(self, lhs, rhs):
-        divide = self.createChildAlgorithm("Plus")
-        divide.setProperty("LHSWorkspace", lhs)
-        divide.setProperty("RHSWorkspace", rhs)
-        divide.execute()
-        return divide.getProperty("OutputWorkspace").value
-
     def _integrate_bands(self, bands, in_ws):
         # Formulate bands, integrate and sum
         accumulated_output = None
@@ -101,13 +88,9 @@ class DetectorFloodWeighting(DataProcessorAlgorithm):
             lower = bands[i]
             upper = bands[i+1]
             step = upper - lower
-            rebin = self.createChildAlgorithm("Rebin")
-            rebin.setProperty("Params", [lower, step, upper])
-            rebin.setProperty("InputWorkspace", in_ws) # Always integrating the same input workspace
-            rebin.execute()
-            integrated = rebin.getProperty("OutputWorkspace").value
+            integrated = Rebin(Params=[lower, step, upper], InputWorkspace=in_ws, StoreInADS=False)
             if accumulated_output:
-                accumulated_output = self._add(accumulated_output, integrated)
+                accumulated_output = Plus(accumulated_output, integrated, StoreInADS=False)
             else:
                 # First band
                 accumulated_output = integrated
@@ -129,25 +112,19 @@ class DetectorFloodWeighting(DataProcessorAlgorithm):
         # Perform solid angle correction. Calculate solid angle then divide through.
         normalized=accumulated_output
         if self.getProperty("SolidAngleCorrection").value:
-            solidAngle = self.createChildAlgorithm("SolidAngle")
-            solidAngle.setProperty("InputWorkspace", accumulated_output)
-            solidAngle.execute()
-            solid_angle_weighting = solidAngle.getProperty("OutputWorkspace").value
-            normalized = self._divide(normalized, solid_angle_weighting)
+            solid_angle_weighting = SolidAngle(InputWorkspace=accumulated_output, StoreInADS=False)
+            normalized = Divide(normalized, solid_angle_weighting, StoreInADS=False)
         progress.report()
         # Divide through by the transmission workspace provided
         if trans_ws:
-            normalized = self._divide(normalized, accumulated_trans_output)
+            normalized = Divide(normalized, accumulated_trans_output, StoreInADS=False)
         # Determine the max across all spectra
         y_values = normalized.extractY()
         mean_val = np.mean(y_values)
         # Create a workspace from the single max value
-        create = self.createChildAlgorithm("CreateSingleValuedWorkspace")
-        create.setProperty("DataValue", mean_val)
-        create.execute()
-        mean_ws = create.getProperty("OutputWorkspace").value
+        mean_ws = CreateSingleValuedWorkspace(DataValue=mean_val, StoreInADS=False)
         # Divide each entry by mean
-        normalized = self._divide(normalized, mean_ws)
+        normalized = Divide(normalized, mean_ws, StoreInADS=False)
         progress.report()
         # Fix-up ranges
         for i in range(normalized.getNumberHistograms()):
@@ -155,7 +132,6 @@ class DetectorFloodWeighting(DataProcessorAlgorithm):
             normalized.dataX(i)[1] = bands[-1]
 
         self.setProperty('OutputWorkspace', normalized)
-
 
 # Register alg
 AlgorithmFactory.subscribe(DetectorFloodWeighting)

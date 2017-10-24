@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function)
 from mantid.api import *
 from mantid.kernel import *
 import numpy as np
+from mantid.simpleapi import CloneWorkspace
 
 
 class SortXAxis(PythonAlgorithm):
@@ -29,11 +30,7 @@ class SortXAxis(PythonAlgorithm):
 
         num_specs = input_ws.getNumberHistograms()
 
-        clone_alg = self.createChildAlgorithm("CloneWorkspace", enableLogging=False)
-        clone_alg.setProperty("InputWorkspace", input_ws)
-        clone_alg.setProperty("OutputWorkspace", output_ws)
-        clone_alg.execute()
-        output_ws = clone_alg.getProperty("OutputWorkspace").value
+        output_ws = CloneWorkspace(InputWorkspace=input_ws, OutputWorkspace=output_ws, EnableLogging=False, StoreInADS=False)
 
         for i in range(0, num_specs):
             x_data = input_ws.readX(i)
