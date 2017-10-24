@@ -30,7 +30,7 @@ class SortXAxis(PythonAlgorithm):
 
         num_specs = input_ws.getNumberHistograms()
 
-        output_ws = CloneWorkspace(InputWorkspace=input_ws, OutputWorkspace=output_ws, EnableLogging=False, StoreInADS=False)
+        output_ws = CloneWorkspace(InputWorkspace=input_ws, EnableLogging=False, StoreInADS=False)
 
         for i in range(0, num_specs):
             x_data = input_ws.readX(i)
