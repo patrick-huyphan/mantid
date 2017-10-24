@@ -111,27 +111,25 @@ class SofQWMomentsScan(DataProcessorAlgorithm):
         progress = Progress(self, 0.0, 0.05, 3)
 
         progress.report('Energy transfer')
-        scan_alg = self.createChildAlgorithm("ISISIndirectEnergyTransfer", 0.05, 0.95)
-        scan_alg.setProperty('InputFiles', formatRuns(self._data_files, self._instrument_name))
-        scan_alg.setProperty('SumFiles', self._sum_files)
-        scan_alg.setProperty('LoadLogFiles', self._load_logs)
-        scan_alg.setProperty('CalibrationWorkspace', self._calibration_ws)
-        scan_alg.setProperty('Instrument', self._instrument_name)
-        scan_alg.setProperty('Analyser', self._analyser)
-        scan_alg.setProperty('Reflection', self._reflection)
-        scan_alg.setProperty('Efixed', self._efixed)
-        scan_alg.setProperty('SpectraRange', self._spectra_range)
-        scan_alg.setProperty('BackgroundRange', self._background_range)
-        scan_alg.setProperty('RebinString', self._rebin_string)
-        scan_alg.setProperty('DetailedBalance', self._detailed_balance)
-        scan_alg.setProperty('ScaleFactor', self._scale_factor)
-        scan_alg.setProperty('FoldMultipleFrames', self._fold_multiple_frames)
-        scan_alg.setProperty('GroupingMethod', self._grouping_method)
-        scan_alg.setProperty('GroupingWorkspace', self._grouping_ws)
-        scan_alg.setProperty('MapFile', self._grouping_map_file)
-        scan_alg.setProperty('UnitX', self._output_x_units)
-        scan_alg.setProperty('OutputWorkspace', self._red_ws)
-        scan_alg.execute()
+        ISISIndirectEnergyTransfer(InputFiles=formatRuns(self._data_files, self._instrument_name),
+                                   SumFiles=self._sum_files,
+                                   LoadLogFiles=self._load_logs,
+                                   CalibrationWorkspace=self._calibration_ws,
+                                   Instrument=self._instrument_name,
+                                   Analyser=self._analyser,
+                                   Reflection=self._reflection,
+                                   Efixed=self._efixed,
+                                   SpectraRange=self._spectra_range,
+                                   BackgroundRange=self._background_range,
+                                   RebinString=self._rebin_string,
+                                   DetailedBalance=self._detailed_balance,
+                                   ScaleFactor=self._scale_factor,
+                                   FoldMultipleFrames=self._fold_multiple_frames,
+                                   GroupingMethod=self._grouping_method,
+                                   GroupingWorkspace=self._grouping_ws,
+                                   MapFile=self._grouping_map_file,
+                                   UnitX=self._output_x_units,
+                                   OutputWorkspace=self._red_ws)
         logger.information('ReducedWorkspace : %s' % self._red_ws)
 
         Rebin(InputWorkspace=self._red_ws,
@@ -154,19 +152,18 @@ class SofQWMomentsScan(DataProcessorAlgorithm):
         output_workspaces = list()
         temperatures = list()
         run_numbers = list()
-        sofqw_alg = self.createChildAlgorithm("SofQW", enableLogging=False)
-        group_alg = self.createChildAlgorithm("GroupWorkspaces", enableLogging=False)
 
         for input_ws in input_workspace_names:
             progress.report('SofQW for workspace: %s' % input_ws)
-            sofqw_alg.setProperty("InputWorkspace", input_ws)
-            sofqw_alg.setProperty("QAxisBinning", self._q_range)
-            sofqw_alg.setProperty("EMode", 'Indirect')
-            sofqw_alg.setProperty("ReplaceNaNs", True)
-            sofqw_alg.setProperty("Method", 'NormalisedPolygon')
-            sofqw_alg.setProperty("OutputWorkspace", input_ws + '_sqw')
-            sofqw_alg.execute()
-            mtd.addOrReplace(input_ws + '_sqw', sofqw_alg.getProperty("OutputWorkspace").value)
+
+            SofQW(InputWorkspace=input_ws,
+                  QAxisBinning=self._q_range,
+                  EMode='Indirect',
+                  ReplaceNaNs=True,
+                  Method='NormalisedPolygon',
+                  OutputWorkspace=input_ws + '_sqw',
+                  EnableLogging=False)
+
             output_workspaces.append(input_ws + '_sqw')
 
             # Get the sample temperature
@@ -183,10 +180,11 @@ class SofQWMomentsScan(DataProcessorAlgorithm):
         q = list()
         for idx in range(len(y_values)):
             q.append(y_values[idx])
-        group_alg.setProperty("InputWorkspaces", output_workspaces)
-        group_alg.setProperty("OutputWorkspace", self._sqw_ws)
-        group_alg.execute()
-        mtd.addOrReplace(self._sqw_ws, group_alg.getProperty("OutputWorkspace").value)
+
+        GroupWorkspaces(InputWorkspaces=output_workspaces,
+                        OutputWorkspace=self._sqw_ws,
+                        EnableLogging=False)
+
         logger.information('Sqw Workspace : %s' % self._sqw_ws)
 
         # Get input workspaces
@@ -194,8 +192,6 @@ class SofQWMomentsScan(DataProcessorAlgorithm):
         output_workspaces = list()
         width_workspaces = list()
 
-        delete_alg = self.createChildAlgorithm("DeleteWorkspace", enableLogging=False)
-        create_alg = self.createChildAlgorithm("CreateWorkspace", enableLogging=False)
         for input_ws in input_workspace_names:
             progress.report('SofQWMoments for workspace: %s' % input_ws)
             SofQWMoments(InputWorkspace=input_ws,
@@ -232,40 +228,31 @@ class SofQWMomentsScan(DataProcessorAlgorithm):
                 dataE.append(para_e[2])
             progress.report('Creating width workspace')
             width_ws = input_ws + '_width'
-            create_alg.setProperty("OutputWorkspace", width_ws)
-            create_alg.setProperty("DataX", dataX)
-            create_alg.setProperty("DataY", dataY)
-            create_alg.setProperty("DataE", dataE)
-            create_alg.setProperty("NSpec", 1)
-            create_alg.setProperty("UnitX", 'MomentumTransfer')
-            create_alg.setProperty("YUnitLabel", 'FWHM')
-            create_alg.execute()
-            mtd.addOrReplace(width_ws, create_alg.getProperty("OutputWorkspace").value)
+            CreateWorkspace(OutputWorkspace=width_ws,
+                            DataX=dataX,
+                            DataY=dataY,
+                            DataE=dataE,
+                            NSpec=1,
+                            UnitX="MomentumTransfer",
+                            YUnitLabel="FWHM",
+                            EnableLogging=False)
             width_workspaces.append(width_ws)
-            delete_alg.setProperty("Workspace", params_table)
-            delete_alg.execute()
-            delete_alg.setProperty("Workspace", result + '_NormalisedCovarianceMatrix')
-            delete_alg.execute()
-            delete_alg.setProperty("Workspace", result + '_Workspace')
-            delete_alg.execute()
+            DeleteWorkspace(params_table, EnableLogging=False)
+            DeleteWorkspace(result + '_NormalisedCovarianceMatrix', EnableLogging=False)
+            DeleteWorkspace(result + '_Workspace', EnableLogging=False)
+
         logger.information('Moment Workspace : %s' % self._moment_ws)
 
         width_workspace = self._sqw_ws + '_width'
-        clone_alg = self.createChildAlgorithm("CloneWorkspace", enableLogging=True)
-        append_alg = self.createChildAlgorithm("AppendSpectra", enableLogging=True)
+
         for idx in range(len(width_workspaces)):
             if idx == 0:
-                clone_alg.setProperty("InputWorkspace", width_workspaces[0])
-                clone_alg.setProperty("OutputWorkspace", width_workspace)
-                clone_alg.execute()
-                mtd.addOrReplace(width_workspace, clone_alg.getProperty("OutputWorkspace").value)
+                CloneWorkspace(InputWorkspace=width_workspaces[0],
+                               OutputWorkspace=width_workspace)
             else:
-                append_alg.setProperty("InputWorkspace1", width_workspace)
-                append_alg.setProperty("InputWorkspace2", width_workspaces[idx])
-                append_alg.setProperty("OutputWorkspace", width_workspace)
-                append_alg.execute()
-                mtd.addOrReplace(width_workspace, append_alg.getProperty("OutputWorkspace").value)
-        logger.information('Width Workspace : %s' % width_workspace)
+                AppendSpectra(InputWorkspace1=width_workspace,
+                              InputWorkspace2=width_workspaces[idx],
+                              OutputWorkspace=width_workspace)
 
         numb_temp = len(temperatures)
         x_axis_is_temp = len(input_workspace_names) == numb_temp
@@ -291,15 +278,15 @@ class SofQWMomentsScan(DataProcessorAlgorithm):
             ydat.append(y[5] / x[5])
             edat.append(e[5] / x[5])
         diffusion_workspace = self._sqw_ws + '_diffusion'
-        create_alg = self.createChildAlgorithm("CreateWorkspace", enableLogging=False)
-        create_alg.setProperty("OutputWorkspace", diffusion_workspace)
-        create_alg.setProperty("DataX", xdat)
-        create_alg.setProperty("DataY", ydat)
-        create_alg.setProperty("DataE", edat)
-        create_alg.setProperty("NSpec", 1)
-        create_alg.setProperty("YUnitLabel", 'Diffusion')
-        create_alg.execute()
-        mtd.addOrReplace(diffusion_workspace, create_alg.getProperty("OutputWorkspace").value)
+
+        CreateWorkspace(OutputWorkspace=diffusion_workspace,
+                        DataX=xdat,
+                        DataY=ydat,
+                        DataE=edat,
+                        NSpec=1,
+                        YUnitLabel='Diffusion',
+                        EnableLogging=False)
+        
         unitx = mtd[diffusion_workspace].getAxis(0).setUnit("Label")
         unitx.setLabel(unit[0], unit[1])
         logger.information('Diffusion Workspace : %s' % diffusion_workspace)

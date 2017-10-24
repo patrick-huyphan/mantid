@@ -109,11 +109,11 @@ class SofQWMoments(DataProcessorAlgorithm):
         appended = AppendSpectra(InputWorkspace1=self._output_ws + '_M0', InputWorkspace2=self._output_ws + '_M1',
                                  EnableLogging=False, StoreInADS=False, ValidateInputs=False)
         appended = AppendSpectra(InputWorkspace1=appended, InputWorkspace2=self._output_ws + '_M2',
-                                 EnableLogging=False, StoreInADS=False)
+                                 EnableLogging=False, StoreInADS=False, ValidateInputs=False)
         appended = AppendSpectra(InputWorkspace1=appended, InputWorkspace2=self._output_ws + '_M3',
-                                 EnableLogging=False, StoreInADS=False)
+                                 EnableLogging=False, StoreInADS=False, ValidateInputs=False)
         AppendSpectra(InputWorkspace1=appended, InputWorkspace2=self._output_ws + '_M4',
-                      EnableLogging=False, OutputWorkspace=self._output_ws)
+                      EnableLogging=False, OutputWorkspace=self._output_ws, ValidateInputs=False)
 
         for i in range(number_moments):
             DeleteWorkspace(self._output_ws + '_M' + str(i), EnableLogging=False)
