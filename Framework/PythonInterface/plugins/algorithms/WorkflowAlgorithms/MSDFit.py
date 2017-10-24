@@ -94,10 +94,9 @@ class MSDFit(DataProcessorAlgorithm):
         progress = Progress(self, 0.0, 0.05, 3)
         self._original_ws = self._input_ws
 
-        rename_alg = self.createChildAlgorithm("RenameWorkspace", enableLogging=False)
-        rename_alg.setProperty("InputWorkspace", self._input_ws)
-        rename_alg.setProperty("OutputWorkspace", self._input_ws + "_" + self._model)
-        rename_alg.execute()
+        RenameWorkspace(InputWorkspace=self._input_ws,
+                        OutputWorkspace=self._input_ws + "_" + self._model, EnableLogging=False)
+
         self._input_ws = self._input_ws + "_" + self._model
         input_params = [self._input_ws + ',i%d' % i for i in range(self._spec_range[0],
                                                                    self._spec_range[1] + 1)]
@@ -131,15 +130,9 @@ class MSDFit(DataProcessorAlgorithm):
                            FitType='Sequential',
                            CreateOutput=True)
 
-        delete_alg = self.createChildAlgorithm("DeleteWorkspace", enableLogging=False)
-        delete_alg.setProperty("Workspace", self._output_msd_ws + '_NormalisedCovarianceMatrices')
-        delete_alg.execute()
-        delete_alg.setProperty("Workspace", self._output_msd_ws + '_Parameters')
-        delete_alg.execute()
-        rename_alg = self.createChildAlgorithm("RenameWorkspace", enableLogging=False)
-        rename_alg.setProperty("InputWorkspace", self._output_msd_ws)
-        rename_alg.setProperty("OutputWorkspace", self._output_param_ws)
-        rename_alg.execute()
+        DeleteWorkspace(self._output_msd_ws + '_NormalisedCovarianceMatrices', EnableLogging=False)
+        DeleteWorkspace(self._output_msd_ws + '_Parameters', EnableLogging=False)
+        RenameWorkspace(InputWorkspace=self._output_msd_ws, OutputWorkspace=self._output_param_ws, EnableLogging=False)
 
         progress.report('Create output files')
 
@@ -148,40 +141,23 @@ class MSDFit(DataProcessorAlgorithm):
         for par in params_list:
             ws_name = self._output_msd_ws + '_' + par
             parameter_ws_group.append(ws_name)
-            convert_alg = self.createChildAlgorithm("ConvertTableToMatrixWorkspace", enableLogging=False)
-            convert_alg.setProperty("InputWorkspace", self._output_param_ws)
-            convert_alg.setProperty("OutputWorkspace", ws_name)
-            convert_alg.setProperty("ColumnX", 'axis-1')
-            convert_alg.setProperty("ColumnY", par)
-            convert_alg.setProperty("ColumnE", par + '_Err')
-            convert_alg.execute()
-            mtd.addOrReplace(ws_name, convert_alg.getProperty("OutputWorkspace").value)
+            ConvertTableToMatrixWorkspace(InputWorkspace=self._output_param_ws, OutputWorkspace=ws_name,
+                                          ColumnX='axis-1', ColumnY=par, ColumnE=par + '_Err', EnableLogging=False)
 
-        append_alg = self.createChildAlgorithm("AppendSpectra", enableLogging=False)
-        append_alg.setProperty("InputWorkspace1", self._output_msd_ws + '_' + params_list[0])
-        append_alg.setProperty("InputWorkspace2", self._output_msd_ws + '_' + params_list[1])
-        append_alg.setProperty("ValidateInputs", False)
-        append_alg.setProperty("OutputWorkspace", self._output_msd_ws)
-        append_alg.execute()
-        mtd.addOrReplace(self._output_msd_ws, append_alg.getProperty("OutputWorkspace").value)
+        AppendSpectra(InputWorkspace1=self._output_msd_ws + '_' + params_list[0],
+                      InputWorkspace2=self._output_msd_ws + '_' + params_list[1],
+                      ValidateInputs=False, EnableLogging=False, OutputWorkspace=self._output_msd_ws)
+
         if len(params_list) > 2:
-            append_alg.setProperty("InputWorkspace1", self._output_msd_ws)
-            append_alg.setProperty("InputWorkspace2", self._output_msd_ws + '_' + params_list[2])
-            append_alg.setProperty("ValidateInputs", False)
-            append_alg.setProperty("OutputWorkspace", self._output_msd_ws)
-            append_alg.execute()
-            mtd.addOrReplace(self._output_msd_ws, append_alg.getProperty("OutputWorkspace").value)
+            AppendSpectra(InputWorkspace1=self._output_msd_ws,
+                          InputWorkspace2=self._output_msd_ws + '_' + params_list[2],
+                          ValidateInputs=False, EnableLogging=False, OutputWorkspace=self._output_msd_ws)
         for par in params_list:
-            delete_alg.setProperty("Workspace", self._output_msd_ws + '_' + par)
-            delete_alg.execute()
+            DeleteWorkspace(self._output_msd_ws + '_' + par, EnableLogging=False)
 
         progress.report('Change axes')
         # Sort ascending x
-        sort_alg = self.createChildAlgorithm("SortXAxis", enableLogging=False)
-        sort_alg.setProperty("InputWorkspace", self._output_msd_ws)
-        sort_alg.setProperty("OutputWorkspace", self._output_msd_ws)
-        sort_alg.execute()
-        mtd.addOrReplace(self._output_msd_ws, sort_alg.getProperty("OutputWorkspace").value)
+        SortXAxis(InputWorkspace=self._output_msd_ws, OutputWorkspace=self._output_msd_ws, EnableLogging=False)
         # Create a new x axis for the Q and Q**2 workspaces
         xunit = mtd[self._output_msd_ws].getAxis(0).setUnit('Label')
         xunit.setLabel('Temperature', 'K')
@@ -194,23 +170,13 @@ class MSDFit(DataProcessorAlgorithm):
         # Rename fit workspace group
         original_fit_ws_name = self._output_msd_ws + '_Workspaces'
         if original_fit_ws_name != self._output_fit_ws:
-            rename_alg.setProperty("InputWorkspace", self._output_msd_ws + '_Workspaces')
-            rename_alg.setProperty("OutputWorkspace", self._output_fit_ws)
-            rename_alg.execute()
+            RenameWorkspace(InputWorkspace=self._output_msd_ws + '_Workspaces',
+                            OutputWorkspace=self._output_fit_ws, EnableLogging=False)
 
         # Add sample logs to output workspace
-        copy_alg = self.createChildAlgorithm("CopyLogs", enableLogging=False)
-        copy_alg.setProperty("InputWorkspace", self._input_ws)
-        copy_alg.setProperty("OutputWorkspace", self._output_msd_ws)
-        copy_alg.execute()
-        copy_alg.setProperty("InputWorkspace", self._input_ws)
-        copy_alg.setProperty("OutputWorkspace", self._output_fit_ws)
-        copy_alg.execute()
-
-        rename_alg = self.createChildAlgorithm("RenameWorkspace", enableLogging=False)
-        rename_alg.setProperty("InputWorkspace", self._input_ws)
-        rename_alg.setProperty("OutputWorkspace", self._original_ws)
-        rename_alg.execute()
+        CopyLogs(InputWorkspace=self._input_ws, OutputWorkspace=self._output_msd_ws, EnableLogging=False)
+        CopyLogs(InputWorkspace=self._input_ws, OutputWorkspace=self._output_fit_ws, EnableLogging=False)
+        RenameWorkspace(InputWorkspace=self._input_ws, OutputWorkspace=self._original_ws, EnableLogging=False)
 
         self.setProperty('OutputWorkspace', self._output_msd_ws)
         self.setProperty('ParameterWorkspace', self._output_param_ws)
