@@ -1,6 +1,7 @@
 from mantid.api import *
 from mantid.kernel import *
 from mantid import config
+from mantid.simpleapi import ISISIndirectEnergyTransfer, ElasticWindowMultiple, Divide, DeleteWorkspace, MSDFit
 
 import os
 
@@ -129,71 +130,62 @@ class EnergyWindowScan(DataProcessorAlgorithm):
 
         process_prog = Progress(self, start=0.1, end=0.9, nreports=4)
         process_prog.report("Energy Transfer")
-        scan_alg = self.createChildAlgorithm("ISISIndirectEnergyTransfer", 0.05, 0.95)
-        scan_alg.setProperty('InputFiles', self._data_files)
-        scan_alg.setProperty('SumFiles', self._sum_files)
-        scan_alg.setProperty('LoadLogFiles', self._load_logs)
-        scan_alg.setProperty('CalibrationWorkspace', self._calibration_ws)
-        scan_alg.setProperty('Instrument', self._instrument_name)
-        scan_alg.setProperty('Analyser', self._analyser)
-        scan_alg.setProperty('Reflection', self._reflection)
-        scan_alg.setProperty('Efixed', self._efixed)
-        scan_alg.setProperty('SpectraRange', self._spectra_range)
-        scan_alg.setProperty('BackgroundRange', self._background_range)
-        scan_alg.setProperty('RebinString', self._rebin_string)
-        scan_alg.setProperty('DetailedBalance', self._detailed_balance)
-        scan_alg.setProperty('ScaleFactor', self._scale_factor)
-        scan_alg.setProperty('FoldMultipleFrames', self._fold_multiple_frames)
-        scan_alg.setProperty('GroupingMethod', self._grouping_method)
-        scan_alg.setProperty('GroupingWorkspace', self._grouping_ws)
-        scan_alg.setProperty('MapFile', self._grouping_map_file)
-        scan_alg.setProperty('UnitX', self._output_x_units)
-        scan_alg.setProperty('OutputWorkspace', self._output_ws)
-        scan_alg.execute()
+
+        ISISIndirectEnergyTransfer(InputFiles=self._data_files,
+                                   SumFiles=self._sum_files,
+                                   LoadLogFiles=self._load_logs,
+                                   CalibrationWorkspace=self._calibration_ws,
+                                   Instrument=self._instrument_name,
+                                   Analyser=self._analyser,
+                                   Reflection=self._reflection,
+                                   Efixed=self._efixed,
+                                   SpectraRange=self._spectra_range,
+                                   BackgroundRange=self._background_range,
+                                   RebinString=self._rebin_string,
+                                   DetailedBalance=self._detailed_balance,
+                                   ScaleFactor=self._scale_factor,
+                                   FoldMultipleFrames=self._fold_multiple_frames,
+                                   GroupingMethod=self._grouping_method,
+                                   GroupingWorkspace=self._grouping_ws,
+                                   MapFile=self._grouping_map_file,
+                                   UnitX=self._output_x_units,
+                                   OutputWorkspace=self._output_ws,
+                                   startProgress=0.05,
+                                   endProgress=0.95)
 
         logger.information('OutputWorkspace : %s' % self._output_ws)
         logger.information('ScanWorkspace : %s' % self._scan_ws)
 
         elwin_prog = Progress(self, start=0.9, end=1.0, nreports=4)
-        delete_alg = self.createChildAlgorithm("DeleteWorkspace", enableLogging=False)
-        divide_alg = self.createChildAlgorithm("Divide", enableLogging=False)
-        elwin_alg = self.createChildAlgorithm("ElasticWindowMultiple", enableLogging=False)
+
         elwin_prog.report('Elastic window')
-        elwin_alg.setProperty("InputWorkspaces", self._output_ws)
-        elwin_alg.setProperty("IntegrationRangeStart", self._elastic_range[0])
-        elwin_alg.setProperty("IntegrationRangeEnd", self._elastic_range[1])
-        elwin_alg.setProperty("SampleEnvironmentLogName", self._sample_log_name)
-        elwin_alg.setProperty("SampleEnvironmentLogValue", self._sample_log_value)
-        elwin_alg.setAlwaysStoreInADS(True)
-        elwin_alg.setProperty("OutputInQ", self._scan_ws + '_el_eq1')
-        elwin_alg.setProperty("OutputInQSquared", self._scan_ws + '_el_eq2')
-        elwin_alg.setProperty("OutputELF", self._scan_ws + '_el_elf')
-        elwin_alg.setProperty("OutputELT", self._scan_ws + '_el_elt')
-        elwin_alg.execute()
+        ElasticWindowMultiple(InputWorkspaces=self._output_ws,
+                              IntegrationRangeStart=self._elastic_range[0],
+                              IntegrationRangeEnd=self._elastic_range[1],
+                              SampleEnvironmentLogName=self._sample_log_name,
+                              SampleEnvironmentLogValue=self._sample_log_value,
+                              OutputInQ=self._scan_ws + '_el_eq1',
+                              OutputInQSquared=self._scan_ws + '_el_eq2',
+                              OutputELF=self._scan_ws + '_el_elf',
+                              OutputELT=self._scan_ws + '_el_elt')
 
         elwin_prog.report('Inelastic window')
-        elwin_alg.setProperty("InputWorkspaces", self._output_ws)
-        elwin_alg.setProperty("IntegrationRangeStart", self._inelastic_range[0])
-        elwin_alg.setProperty("IntegrationRangeEnd", self._inelastic_range[1])
-        elwin_alg.setProperty("SampleEnvironmentLogName", self._sample_log_name)
-        elwin_alg.setProperty("SampleEnvironmentLogValue", self._sample_log_value)
-        elwin_alg.setProperty("OutputInQ", self._scan_ws + '_inel_eq1')
-        elwin_alg.setProperty("OutputInQSquared", self._scan_ws + '_inel_eq2')
-        elwin_alg.setProperty("OutputELF", self._scan_ws + '_inel_elf')
-        elwin_alg.setProperty("OutputELT", self._scan_ws + '_inel_elt')
-        elwin_alg.execute()
+        ElasticWindowMultiple(InputWorkspaces=self._output_ws,
+                              IntegrationRangeStart=self._inelastic_range[0],
+                              IntegrationRangeEnd=self._inelastic_range[1],
+                              SampleEnvironmentLogName=self._sample_log_name,
+                              SampleEnvironmentLogValue=self._sample_log_value,
+                              OutputInQ=self._scan_ws + '_inel_eq1',
+                              OutputInQSquared=self._scan_ws + '_inel_eq2',
+                              OutputELF=self._scan_ws + '_inel_elf',
+                              OutputELT=self._scan_ws + '_inel_elt')
 
-        # storing in ADS so eisf workspace is created
-        divide_alg.setAlwaysStoreInADS(True)
-        divide_alg.setProperty("LHSWorkspace", self._scan_ws + '_el_eq1')
-        divide_alg.setProperty("RHSWorkspace", self._scan_ws + '_inel_eq1')
-        divide_alg.setProperty("OutputWorkspace", self._scan_ws + '_eisf')
-        divide_alg.execute()
+        Divide(LHSWorkspace=self._scan_ws + '_el_eq1',
+               RHSWorkspace=self._scan_ws + '_inel_eq1',
+               OutputWorkspace=self._scan_ws + '_eisf')
 
-        delete_alg.setProperty("Workspace", self._scan_ws + '_el_elf')
-        delete_alg.execute()
-        delete_alg.setProperty("Workspace", self._scan_ws + '_inel_elf')
-        delete_alg.execute()
+        DeleteWorkspace(self._scan_ws + '_el_elf')
+        DeleteWorkspace(self._scan_ws + '_inel_elf')
 
         x_values = mtd[self._scan_ws + '_el_eq1'].readX(0)
         num_hist = mtd[self._scan_ws + '_el_eq1'].getNumberHistograms()
@@ -204,15 +196,13 @@ class EnergyWindowScan(DataProcessorAlgorithm):
         if self._msdfit:
             msdfit_prog = Progress(self, start=0.9, end=1.0, nreports=4)
             msdfit_prog.report('msdFit')
-            msd_alg = self.createChildAlgorithm("MSDFit", enableLogging=True)
-            msd_alg.setProperty("InputWorkspace", self._scan_ws + '_el_eq1')
-            msd_alg.setProperty("Xstart", x_values[0])
-            msd_alg.setProperty("XEnd", x_values[len(x_values) - 1])
-            msd_alg.setProperty("SpecMin", 0)
-            msd_alg.setProperty("SpecMax", num_hist - 1)
-            msd_alg.setProperty("OutputWorkspace", self._scan_ws + '_msd')
-            msd_alg.setProperty("FitWorkspaces", self._scan_ws + '_msd_fit')
-            msd_alg.execute()
+            MSDFit(InputWorkspace=self._scan_ws + '_el_eq1',
+                   Xstart=x_values[0],
+                   XEnd=x_values[len(x_values) - 1],
+                   SpecMin=0,
+                   SpecMax=num_hist - 1,
+                   OutputWorkspace=self._scan_ws + '_msd',
+                   FitWorkspaces=self._scan_ws + '_msd_fit')
 
     def validateInputs(self):
         """
