@@ -56,9 +56,13 @@ public:
   QString sliceSuffix(double startTime, double endTime) const;
   // The following methods are public for testing purposes only
   // Add entry for the number of slices for a row in a group
-  void addNumSlicesEntry(int groupID, int rowID, size_t numSlices);
+  void addNumSlicesEntry(
+      int groupID, int rowID,
+      std::pair<std::vector<double>, std::vector<double>> numSlices);
   // Add entry for the number of slices for all rows in a group
-  void addNumGroupSlicesEntry(int groupID, size_t numSlices);
+  void addNumGroupSlicesEntry(
+      int groupID,
+      std::pair<std::vector<double>, std::vector<double>> numSlices);
 
 private:
   // Process selected rows
@@ -70,10 +74,8 @@ private:
   QString loadRun(const QString &run, const QString &instrument,
                   const QString &prefix, const QString &loader, bool &runFound);
   // Get the name of a post-processed workspace
-  QString getPostprocessedWorkspaceName(const GroupData &groupData,
-                                        const QString &prefix,
-                                        double startTime,
-                                        double endTime);
+  QString getPostprocessedWorkspaceName(const GroupData &groupData, size_t groupID,
+                                        const QString &prefix, const QString& suffix) override;
   // Loads a group of runs
   bool loadGroup(const GroupData &group);
   // Process a group of runs which are event workspaces
@@ -92,9 +94,10 @@ private:
   // Checks if the time slicing type is Uniform or UniformEven
   bool isUniform(TimeSlicingType type) const;
 
-  static std::pair<int, double> numberOfSlicesAndDuration(
-    const QString &timeSlicing, TimeSlicingType slicingType,
-    double totalDurationInSeconds);
+  static std::pair<int, double>
+  numberOfSlicesAndDuration(const QString &timeSlicing,
+                            TimeSlicingType slicingType,
+                            double totalDurationInSeconds);
   // Parse uniform / uniform even time slicing from input string
   std::tuple<std::vector<double>, std::vector<double>>
   parseUniform(TimeSlicingType timeSlicing, const QString &slicingType,
@@ -128,8 +131,11 @@ private:
       const MantidQt::MantidWidgets::DataProcessor::TreeData &data,
       const bool findEventWS);
 
-  std::map<int, std::map<int, size_t>> m_numSlicesMap;
-  std::map<int, size_t> m_numGroupSlicesMap;
+  std::map<int,
+           std::map<int, std::pair<std::vector<double>, std::vector<double>>>>
+      m_numSlicesMap;
+  std::map<int, std::pair<std::vector<double>, std::vector<double>>>
+      m_numGroupSlicesMap;
 };
 }
 }

@@ -101,6 +101,10 @@ std::map<std::string, std::string> Stitch1DMany::validateInputs() {
   const std::vector<std::string> inputWorkspacesStr =
       this->getProperty("InputWorkspaces");
 
+  for(const auto& value : inputWorkspacesStr)
+    std::cout << value << '\n';
+  std::cout << std::endl;
+
   // Add all input workspaces to a single row in the matrix
   // Each 'row' are the workspaces belonging to a specific group
   // Each 'column' are the workspaces belonging to a specific period

@@ -49,7 +49,7 @@ public:
 private slots:
   void startWorker() {
     try {
-      m_presenter->postProcessGroup(m_groupData);
+      m_presenter->postProcessGroup(m_groupData, m_groupIndex);
       // Group is set processed if all constituent rows are processed
       if (m_presenter->m_manager->rowCount(m_groupIndex) ==
           static_cast<int>(m_groupData.size()))

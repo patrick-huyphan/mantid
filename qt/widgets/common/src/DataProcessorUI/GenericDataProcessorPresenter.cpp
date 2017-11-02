@@ -229,9 +229,9 @@ GenericDataProcessorPresenter::~GenericDataProcessorPresenter() {}
 namespace {
 std::set<std::string> toStdStringSet(std::set<QString> in) {
   auto out = std::set<std::string>();
-  std::transform(
-      std::begin(in), std::end(in), std::inserter(out, out.begin()),
-      [](QString const &inStr) -> std::string { return inStr.toStdString(); });
+  std::transform(std::begin(in), std::end(in), std::inserter(out, out.begin()),
+                 [](QString const &inStr)
+                     -> std::string { return inStr.toStdString(); });
   return out;
 }
 }
@@ -329,46 +329,47 @@ void GenericDataProcessorPresenter::process() {
   // Progress: each group and each row within count as a progress step.
   int maxProgress = 0;
 
-  for (const auto &item : m_selectedData) {
-    // Loop over each group
+  for (auto it = m_selectedData.cbegin(); it != m_selectedData.cend(); ++it) {
+    auto group = (*it);
 
     // Set group as unprocessed if settings have changed or the expected output
     // workspace cannot be found
-    bool groupWSFound = workspaceExists(
-        getPostprocessedWorkspaceName(item.second, m_postprocessor.prefix(), m_postprocessor.suffix()));
+    bool groupWSFound = workspaceExists(getPostprocessedWorkspaceName(
+        group.second, group.first, m_postprocessor.prefix(),
+        m_postprocessor.suffix()));
 
     if (settingsChanged || !groupWSFound)
-      m_manager->setProcessed(false, item.first);
+      m_manager->setProcessed(false, group.first);
 
     // Groups that are already processed or cannot be post-processed (only 1
     // child row selected) do not count in progress
-    if (!isProcessed(item.first) && item.second.size() > 1)
+    if (!isProcessed(group.first) && group.second.size() > 1)
       maxProgress++;
 
     RowQueue rowQueue;
 
-    for (const auto &data : item.second) {
+    for (const auto &row : group.second) {
 
       // Add all row items to queue
-      rowQueue.push(data);
+      rowQueue.push(row);
 
       // Set row as unprocessed if settings have changed or the expected output
       // workspaces cannot be found
       bool rowWSFound = true;
       for (auto i = 0u;
            i < m_processor.numberOfOutputProperties() && rowWSFound; i++) {
-        rowWSFound = workspaceExists(
-            getReducedWorkspaceName(data.second, m_processor.prefix(i), m_processor.suffix(i)));
+        rowWSFound = workspaceExists(getReducedWorkspaceName(
+            row.second, m_processor.prefix(i), m_processor.suffix(i)));
       }
 
       if (settingsChanged || !rowWSFound)
-        m_manager->setProcessed(false, data.first, item.first);
+        m_manager->setProcessed(false, row.first, group.first);
 
       // Rows that are already processed do not count in progress
-      if (!isProcessed(data.first, item.first))
+      if (!isProcessed(row.first, group.first))
         maxProgress++;
     }
-    m_gqueue.emplace(item.first, rowQueue);
+    m_gqueue.emplace(group.first, rowQueue);
   }
 
   // Create progress reporter bar
@@ -572,8 +573,8 @@ void GenericDataProcessorPresenter::saveNotebook(const TreeData &data) {
 Post-processes the workspaces created by the given rows together.
 @param groupData : the data in a given group as received from the tree manager
 */
-void GenericDataProcessorPresenter::postProcessGroup(
-    const GroupData &groupData) {
+void GenericDataProcessorPresenter::postProcessGroup(const GroupData &groupData,
+                                                     size_t groupID) {
 
   // If no post processing has been defined, then we are dealing with a
   // one-level tree
@@ -587,18 +588,29 @@ void GenericDataProcessorPresenter::postProcessGroup(
   QStringList inputNames;
 
   // The name to call the post-processed ws
-  auto const outputWSName =
-      getPostprocessedWorkspaceName(groupData, m_postprocessor.prefix(), m_postprocessor.suffix());
+  auto const outputWSName = getPostprocessedWorkspaceName(
+      groupData, groupID, m_postprocessor.prefix(), m_postprocessor.suffix());
 
   // Go through each row and get the input ws names
   for (auto const &row : groupData) {
 
     // The name of the reduced workspace for this row
-    auto const inputWSName =
-        getReducedWorkspaceName(row.second, m_processor.prefix(0), m_processor.suffix(0));
+    auto const inputWSName = getReducedWorkspaceName(
+        row.second, m_processor.prefix(0), m_processor.suffix(0));
 
     if (workspaceExists(inputWSName)) {
       inputNames.append(inputWSName);
+    } else {
+      std::cout << "WS Does not exist: " << inputWSName.toStdString()
+                << std::endl;
+
+      auto printExistingWorkspaces = []() -> void {
+        auto map = AnalysisDataService::Instance().topLevelItems();
+        for (auto &&item : map)
+          std::cout << "WS Does exist: " << item.first << std::endl;
+      };
+
+      printExistingWorkspaces();
     }
   }
 
@@ -613,6 +625,7 @@ void GenericDataProcessorPresenter::postProcessGroup(
 
   IAlgorithm_sptr alg =
       AlgorithmManager::Instance().create(m_postprocessor.name().toStdString());
+  std::cout << m_postprocessor.inputProperty().toStdString() << std::endl;
   alg->initialize();
   setAlgorithmProperty(alg.get(), m_postprocessor.inputProperty(),
                        inputWSNames);
@@ -674,7 +687,8 @@ Workspace_sptr GenericDataProcessorPresenter::prepareRunWorkspace(
 
   // Remove leading/trailing whitespace from each run
   std::transform(runs.begin(), runs.end(), runs.begin(),
-                 [stripWhitespace](QString in) -> QString { return stripWhitespace(in); });
+                 [stripWhitespace](QString in)
+                     -> QString { return stripWhitespace(in); });
 
   // If we're only given one run, just return that
   if (runs.size() == 1)
@@ -740,10 +754,8 @@ Returns the name of the reduced workspace for a given row
 @throws std::runtime_error if the workspace could not be prepared
 @returns : The name of the workspace
 */
-QString
-GenericDataProcessorPresenter::getReducedWorkspaceName(const QStringList &data,
-                                                       const QString &prefix,
-                                                       const QString &suffix) {
+QString GenericDataProcessorPresenter::getReducedWorkspaceName(
+    const QStringList &data, const QString &prefix, const QString &suffix) {
 
   if (static_cast<int>(data.size()) != m_columns)
     throw std::invalid_argument("Can't find reduced workspace name");
@@ -770,7 +782,8 @@ GenericDataProcessorPresenter::getReducedWorkspaceName(const QStringList &data,
 
       // If it's not empty, use it
       if (!valueStr.isEmpty()) {
-        names.append(m_whitelist.prefix(col) + valueStr + m_whitelist.suffix(col));
+        names.append(m_whitelist.prefix(col) + valueStr +
+                     m_whitelist.suffix(col));
       }
     }
   } // Columns
@@ -787,7 +800,8 @@ Returns the name of the reduced workspace for a given group
 @returns : The name of the workspace
 */
 QString GenericDataProcessorPresenter::getPostprocessedWorkspaceName(
-    const GroupData &groupData, const QString &prefix, const QString& suffix) {
+    const GroupData &groupData, size_t index, const QString &prefix,
+    const QString &suffix) {
 
   if (!m_postprocess)
     return QString();
@@ -797,8 +811,8 @@ QString GenericDataProcessorPresenter::getPostprocessedWorkspaceName(
 
   QStringList outputNames;
 
-  for (const auto &data : groupData) {
-    outputNames.append(getReducedWorkspaceName(data.second));
+  for (const auto &row : groupData) {
+    outputNames.append(getReducedWorkspaceName(row.second));
   }
   return prefix + outputNames.join("_") + suffix;
 }
@@ -1037,7 +1051,8 @@ void GenericDataProcessorPresenter::reduceRow(RowData *data) {
   /* We need to give a name to the output workspaces */
   for (auto i = 0u; i < m_processor.numberOfOutputProperties(); i++) {
     setAlgorithmProperty(alg.get(), m_processor.outputPropertyName(i),
-                         getReducedWorkspaceName(*data, m_processor.prefix(i), m_processor.suffix(i)));
+                         getReducedWorkspaceName(*data, m_processor.prefix(i),
+                                                 m_processor.suffix(i)));
   }
 
   /* Now run the processing algorithm */
@@ -1061,9 +1076,8 @@ void GenericDataProcessorPresenter::reduceRow(RowData *data) {
                             ? propValue.right(propValue.indexOf("e"))
                             : "";
           propValue =
-              propValue.mid(0,
-                            propValue.indexOf(".") +
-                                m_options["RoundPrecision"].toInt() + 1) +
+              propValue.mid(0, propValue.indexOf(".") +
+                                   m_options["RoundPrecision"].toInt() + 1) +
               exp;
         }
 
@@ -1463,8 +1477,8 @@ void GenericDataProcessorPresenter::plotRow() {
 
     for (const auto &run : item.second) {
 
-      auto const wsName =
-          getReducedWorkspaceName(run.second, m_processor.prefix(0), m_processor.suffix(0));
+      auto const wsName = getReducedWorkspaceName(
+          run.second, m_processor.prefix(0), m_processor.suffix(0));
 
       if (workspaceExists(wsName))
         workspaces.insert(wsName, nullptr);
@@ -1506,12 +1520,14 @@ void GenericDataProcessorPresenter::plotGroup() {
   // Set of workspaces not found in the ADS
   QSet<QString> notFound;
 
-  auto const items = m_manager->selectedData();
+  auto const groups = m_manager->selectedData();
 
-  for (const auto &item : items) {
-    if (item.second.size() > 1) {
-      auto const wsName =
-          getPostprocessedWorkspaceName(item.second, m_postprocessor.prefix(), m_postprocessor.suffix());
+  for (auto it = groups.cbegin(); it != groups.cend(); ++it) {
+    auto row = *it;
+    if (row.second.size() > 1) {
+      auto const wsName = getPostprocessedWorkspaceName(
+          row.second, row.first, m_postprocessor.prefix(),
+          m_postprocessor.suffix());
 
       if (workspaceExists(wsName))
         workspaces.insert(wsName, nullptr);

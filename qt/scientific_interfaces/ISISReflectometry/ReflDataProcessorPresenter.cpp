@@ -227,11 +227,9 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
   // For custom/log value slicing the start/stop times are the same for all rows
   if (type == TimeSlicingType::Custom)
     std::tie(startTimes, stopTimes) = parseCustom(timeSlicingValues);
-  if (type == TimeSlicingType::LogValue)
+  else if (type == TimeSlicingType::LogValue)
     std::tie(startTimes, stopTimes, logFilter) =
         parseLogValue(timeSlicingValues);
-  else if (isUniform(type)) {
-  }
 
   for (const auto &row : group) {
 
@@ -246,7 +244,7 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
     }
 
     size_t numSlices = startTimes.size();
-    addNumSlicesEntry(groupID, rowID, numSlices);
+    addNumSlicesEntry(groupID, rowID, std::make_pair(startTimes, stopTimes));
 
     for (size_t i = 0; i < numSlices; i++) {
       try {
@@ -275,7 +273,7 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
     if (type != TimeSlicingType::Uniform)
       numGroupSlices = startTimes.size();
 
-    addNumGroupSlicesEntry(groupID, numGroupSlices);
+    addNumGroupSlicesEntry(groupID, std::make_pair(startTimes, stopTimes));
 
     for (size_t i = 0; i < numGroupSlices; i++) {
       GroupData groupNew;
@@ -286,7 +284,7 @@ bool ReflDataProcessorPresenter::processGroupAsEventWS(
         groupNew[row.first] = data;
       }
       try {
-        postProcessGroup(groupNew);
+        postProcessGroup(groupNew, i);
       } catch (...) {
         errors = true;
       }
@@ -318,7 +316,7 @@ bool ReflDataProcessorPresenter::processGroupAsNonEventWS(int groupID,
   // Post-process (if needed)
   if (group.size() > 1) {
     try {
-      postProcessGroup(group);
+      postProcessGroup(group, groupID);
     } catch (...) {
       errors = true;
     }
@@ -363,7 +361,7 @@ ReflDataProcessorPresenter::retrieveWorkspaceOrCritical(
 
 QString ReflDataProcessorPresenter::sliceSuffix(double startTime,
                                                 double endTime) const {
-  return QString::number(startTime) + "_to_" + QString::number(endTime);
+  return "_" + QString::number(startTime) + "_to_" + QString::number(endTime);
 }
 
 std::pair<int, double> ReflDataProcessorPresenter::numberOfSlicesAndDuration(
@@ -559,6 +557,7 @@ QString ReflDataProcessorPresenter::loadRun(const QString &run,
 * @return :: the name of the sliced workspace (without prefix 'TOF_')
 */
 QString ReflDataProcessorPresenter::takeSlice(const QString &runNo,
+                                              size_t sliceIndex,
                                               double startTime, double stopTime,
                                               const QString &logFilter) {
 
@@ -647,11 +646,15 @@ void ReflDataProcessorPresenter::plotRow() {
 
   for (const auto &item : items) {
     for (const auto &run : item.second) {
-      const size_t numSlices = m_numSlicesMap.at(item.first).at(run.first);
+      auto &times = m_numSlicesMap.at(item.first).at(run.first);
+      const auto &startTimes = times.first;
+      const auto &endTimes = times.second;
       const auto wsName = getReducedWorkspaceName(run.second, "", "IvsQ_");
 
-      for (size_t slice = 0; slice < numSlices; slice++) {
-        const auto sliceName = wsName + "_slice_" + QString::number(slice);
+      assert(startTimes.size() == endTimes.size());
+      for (size_t slice = 0; slice < startTimes.size(); slice++) {
+        const auto sliceName =
+            wsName + sliceSuffix(startTimes[slice], endTimes[slice]);
         if (workspaceExists(sliceName))
           workspaces.insert(sliceName, nullptr);
         else
@@ -675,24 +678,23 @@ void ReflDataProcessorPresenter::plotRow() {
 * @returns : The name of the workspace
 */
 QString ReflDataProcessorPresenter::getPostprocessedWorkspaceName(
-    const GroupData &groupData, const QString &prefix, double startTime,
-    double endTime) {
+    const GroupData &groupData, size_t groupID, const QString &prefix, const QString& suffix) {
   QStringList outputNames;
-  std::transform(groupData.cbegin(), groupData.cend(),
-                 std::back_inserter(outputNames),
-                 [this, startTime,
-                  endTime](std::pair<int, RowData> const &row) -> QString {
-                   return getReducedWorkspaceName(row.second) +
-                          sliceSuffix(startTime, endTime);
-                 });
+  for (auto it = groupData.cbegin(); it != groupData.cend(); ++it) {
+    auto& times = m_numSlicesMap[groupID][index];
+    auto& endTimes = times.first;
+    auto& startTimes = times.second;
+    outputNames.append(getReducedWorkspaceName((*it).second) +
+                       sliceSuffix(startTimes[(*it).first], endTimes[(*it).first]));
+  }
   return prefix + outputNames.join("_");
 }
 
 /** Plots any currently selected groups */
 void ReflDataProcessorPresenter::plotGroup() {
 
-  const auto items = m_manager->selectedData();
-  if (items.size() == 0)
+  const auto selectedGroups = m_manager->selectedData();
+  if (selectedGroups.size() == 0)
     return;
 
   // If slicing values are empty plot normally
@@ -707,12 +709,11 @@ void ReflDataProcessorPresenter::plotGroup() {
   // Set of workspaces not found in the ADS
   QSet<QString> notFound;
 
-  for (const auto &item : items) {
-    if (item.second.size() > 1) {
-      auto numSlices = m_numGroupSlicesMap.at(item.first);
-      for (auto slice = 0ul; slice < numSlices; slice++) {
-        const auto wsName =
-            getPostprocessedWorkspaceName(item.second, "IvsQ_", slice);
+  for (const auto &groups : selectedGroups) {
+    if (groups.second.size() > 1) {
+      for (auto slice = 0ul; slice < groups.second.size(); ++slice) {
+        const auto wsName = getPostprocessedWorkspaceName(
+            groups.second, groups.first, "", "_IvsQ");
 
         if (workspaceExists(wsName))
           workspaces.insert(wsName, nullptr);
@@ -790,9 +791,10 @@ bool ReflDataProcessorPresenter::proceedIfWSTypeInADS(const TreeData &data,
 * @param rowID :: The ID of the row in group
 * @param numSlices :: Number of slices
 */
-void ReflDataProcessorPresenter::addNumSlicesEntry(int groupID, int rowID,
-                                                   size_t numSlices) {
-  m_numSlicesMap[groupID][rowID] = numSlices;
+void ReflDataProcessorPresenter::addNumSlicesEntry(
+    int groupID, int rowID,
+    std::pair<std::vector<double>, std::vector<double>> numSlices) {
+  m_numSlicesMap[groupID][rowID] = std::move(numSlices);
 }
 
 /** Add entry for the number of slices for all rows in a group
@@ -800,9 +802,10 @@ void ReflDataProcessorPresenter::addNumSlicesEntry(int groupID, int rowID,
 * @param groupID :: The ID of the group
 * @param numSlices :: Number of slices
 */
-void ReflDataProcessorPresenter::addNumGroupSlicesEntry(int groupID,
-                                                        size_t numSlices) {
-  m_numGroupSlicesMap[groupID] = numSlices;
+void ReflDataProcessorPresenter::addNumGroupSlicesEntry(
+    int groupID,
+    std::pair<std::vector<double>, std::vector<double>> sliceTimes) {
+  m_numGroupSlicesMap[groupID] = std::move(sliceTimes);
 }
 }
 }

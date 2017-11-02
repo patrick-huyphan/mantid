@@ -127,7 +127,8 @@ public:
                                   const QString &prefix = "",
                                   const QString &suffix = "");
   // Get the name of a post-processed workspace
-  QString getPostprocessedWorkspaceName(const GroupData &groupData,
+  virtual QString getPostprocessedWorkspaceName(const GroupData &groupData,
+                                        size_t index,
                                         const QString &prefix = "",
                                         const QString &suffix = "");
 
@@ -163,7 +164,7 @@ protected:
   QString m_postprocessingOptions;
 
   // Post-process some rows
-  void postProcessGroup(const GroupData &data);
+  void postProcessGroup(const GroupData &data, size_t groupID);
   // Reduce a row
   void reduceRow(RowData *data);
   // Finds a run in the AnalysisDataService
