@@ -236,6 +236,7 @@ void Graph::notifyChanges() { emit modifiedGraph(); }
 void Graph::activateGraph() {
   emit selectedGraph(this);
   setFocus();
+  this->multiLayer()->applicationWindow()->setActiveWindow(this->multiLayer());
 }
 
 MultiLayer *Graph::multiLayer() {
@@ -3320,6 +3321,7 @@ QString Graph::yAxisTitleFromFirstCurve() {
 }
 
 void Graph::contextMenuEvent(QContextMenuEvent *e) {
+  activateGraph();
   if (selectedMarker >= 0) {
     emit showMarkerPopupMenu();
     return;
@@ -3963,7 +3965,6 @@ void Graph::showAxisTitleMenu() {
 }
 
 void Graph::showAxisContextMenu(int axis) {
-  this->multiLayer()->applicationWindow()->setActiveWindow(this->multiLayer());
   QMenu menu(this);
 
   menu.addAction(getQPixmap("unzoom_xpm"), tr("&Rescale to show all"), this,
