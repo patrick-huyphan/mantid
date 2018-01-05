@@ -64,6 +64,8 @@ private:
   void init() override;
   /// Execution code
   void exec() override;
+
+  void setWavelengthBoundaries(Mantid::API::MatrixWorkspace_sptr ws);
 };
 
 } // namespace Algorithms
