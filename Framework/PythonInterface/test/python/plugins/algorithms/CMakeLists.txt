@@ -39,10 +39,12 @@ set ( TEST_PY_FILES
   FindEPPTest.py
   FindReflectometryLinesTest.py
   FitGaussianTest.py
+  FractionalIndexingTest.py
   GSASIIRefineFitPeaksTest.py
   GetEiT0atSNSTest.py
   GetNegMuMuonicXRDTest.py
   IndirectTransmissionTest.py
+  IndexSatellitePeaksTest.py
   LoadAndMergeTest.py
   LoadDNSLegacyTest.py
   LoadEmptyVesuvioTest.py
