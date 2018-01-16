@@ -65,6 +65,8 @@ Single Crystal Diffraction
 
 - SCD Event Data Reduction interface now uses the Indexing Tolerance for Index Peaks to index the peaks for the Select Cell options in Choose Cell tab.  Previously it used a constant, 0.12, for the tolerance.
 
+- :New algorithm ref:`IndexSatellitePeaks <algm-IndexSatellitePeaks>` for finding the indicies of "satellite" peaks refined using ref:`RefineSatellitePeaks <algm-RefineSatellitePeaks>`.
+
 
 Total Scattering
 ----------------
