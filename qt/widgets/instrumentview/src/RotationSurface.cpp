@@ -74,6 +74,7 @@ void RotationSurface::init() {
   m_u_max = DBL_MAX;
 
   const auto &detectorInfo = m_instrActor->detectorInfo();
+  const auto timeIndex = m_instrActor->timeIndex();
   // Set if one of the threads in the following loop
   // throws an exception
   bool exceptionThrown = false;
@@ -86,12 +87,14 @@ void RotationSurface::init() {
                             try {
                               size_t i = size_t(ii);
                               try {
-                                if (detectorInfo.isMonitor(i)) {
+                                if (detectorInfo.isMonitor({i, timeIndex})) {
                                   m_unwrappedDetectors[i] = UnwrappedDetector();
                                 } else {
                                   // A real detector.
                                   // Position, relative to origin
-                                  auto rpos = detectorInfo.position(i) - m_pos;
+                                  auto rpos =
+                                      detectorInfo.position({i, timeIndex}) -
+                                      m_pos;
                                   // Create the unwrapped shape
                                   UnwrappedDetector udet(
                                       m_instrActor->getColor(i), i);

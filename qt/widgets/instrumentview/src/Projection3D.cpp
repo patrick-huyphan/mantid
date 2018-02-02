@@ -286,7 +286,8 @@ void Projection3D::componentSelected(size_t componentIndex) {
     return;
   }
 
-  auto pos = componentInfo.position(componentIndex);
+  const auto timeIndex = m_instrActor->timeIndex();
+  auto pos = componentInfo.position({componentIndex, timeIndex});
 
   auto compDir = pos - componentInfo.samplePosition();
   compDir.normalize();

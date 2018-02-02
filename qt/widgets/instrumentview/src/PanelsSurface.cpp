@@ -45,13 +45,13 @@ void setupBasisAxes(const Mantid::Kernel::V3D &zaxis,
 }
 
 std::vector<Mantid::Kernel::V3D>
-retrievePanelCorners(const Mantid::Geometry::ComponentInfo &componentInfo,
+retrievePanelCorners(const Mantid::Geometry::ComponentInfo &componentInfo, size_t timeIndex,
                      size_t rootIndex) {
   auto panel = componentInfo.quadrilateralComponent(rootIndex);
-  return {componentInfo.position(panel.bottomLeft),
-          componentInfo.position(panel.bottomRight),
-          componentInfo.position(panel.topRight),
-          componentInfo.position(panel.topLeft)};
+  return{ componentInfo.position({panel.bottomLeft, timeIndex}),
+          componentInfo.position({panel.bottomRight, timeIndex}),
+          componentInfo.position({panel.topRight, timeIndex}),
+          componentInfo.position({panel.topLeft, timeIndex}) };
 }
 
 Mantid::Kernel::V3D
@@ -143,9 +143,10 @@ void PanelsSurface::project(const Mantid::Kernel::V3D &, double &, double &,
 void PanelsSurface::rotate(const UnwrappedDetector &udet,
                            Mantid::Kernel::Quat &R) const {
   const auto &detectorInfo = m_instrActor->detectorInfo();
+  auto timeIndex = m_instrActor->timeIndex();
   int index = m_detector2bankMap[udet.detIndex];
   FlatBankInfo &info = *m_flatBanks[index];
-  R = info.rotation * detectorInfo.rotation(udet.detIndex);
+  R = info.rotation * detectorInfo.rotation({udet.detIndex, timeIndex});
 }
 
 /**
@@ -177,8 +178,9 @@ void PanelsSurface::addFlatBankOfDetectors(
 
   // keep reference position on the bank's plane
   const auto &detectorInfo = m_instrActor->detectorInfo();
-  auto pos0 = detectorInfo.position(detectors[0]);
-  auto pos1 = detectorInfo.position(detectors[1]) - pos0;
+  const auto timeIndex = m_instrActor->timeIndex();
+  auto pos0 = detectorInfo.position({detectors[0], timeIndex});
+  auto pos1 = detectorInfo.position({detectors[1], timeIndex}) - pos0;
 
   info->rotation = calcBankRotation(pos0, normal);
   info->rotation.rotate(pos1);
@@ -204,7 +206,8 @@ void PanelsSurface::processStructured(const std::vector<size_t> &children,
                                       size_t rootIndex) {
   int index = m_flatBanks.size();
   const auto &componentInfo = m_instrActor->componentInfo();
-  auto corners = retrievePanelCorners(componentInfo, rootIndex);
+  const auto timeIndex = m_instrActor->timeIndex();
+  auto corners = retrievePanelCorners(componentInfo, timeIndex, rootIndex);
   auto normal = calculatePanelNormal(corners);
   // save bank info
   FlatBankInfo *info = new FlatBankInfo(this);
@@ -235,6 +238,7 @@ PanelsSurface::processUnstructured(const std::vector<size_t> &children,
                                    std::vector<bool> &visited) {
   Mantid::Kernel::V3D normal;
   const auto &detectorInfo = m_instrActor->detectorInfo();
+  const auto &timeIndex = m_instrActor->timeIndex();
   Mantid::Kernel::V3D pos0;
   Mantid::Kernel::V3D x, y;
   bool normalFound = false;
@@ -246,9 +250,9 @@ PanelsSurface::processUnstructured(const std::vector<size_t> &children,
       continue;
     visited[child] = true;
 
-    if (detectorInfo.isMonitor(child))
+    if (detectorInfo.isMonitor({child, timeIndex}))
       continue;
-    auto pos = detectorInfo.position(child);
+    auto pos = detectorInfo.position({child, timeIndex});
     if (child == children[0])
       pos0 = pos;
     else if (child == children[1]) {
@@ -357,8 +361,8 @@ void PanelsSurface::addDetector(size_t detIndex,
                                 const Mantid::Kernel::V3D &refPos, int index,
                                 Mantid::Kernel::Quat &rotation) {
   const auto &detectorInfo = m_instrActor->detectorInfo();
-
-  Mantid::Kernel::V3D pos = detectorInfo.position(detIndex);
+  const auto timeIndex = m_instrActor->timeIndex();
+  Mantid::Kernel::V3D pos = detectorInfo.position({detIndex, timeIndex});
   m_detector2bankMap[detIndex] = index;
   // get the colour
   UnwrappedDetector udet(m_instrActor->getColor(detIndex), detIndex);

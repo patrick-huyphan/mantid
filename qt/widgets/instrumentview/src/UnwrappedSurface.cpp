@@ -182,7 +182,7 @@ void UnwrappedSurface::drawSurface(MantidGLWidget *widget, bool picking) const {
           componentInfo.scaleFactor(udet.detIndex);
       glScaled(scaleFactor[0], scaleFactor[1], scaleFactor[2]);
 
-      m_instrActor->componentInfo().shape(udet.detIndex).draw();
+      componentInfo.shape(udet.detIndex).draw();
 
       glPopMatrix();
     }

@@ -72,6 +72,7 @@ public:
   boost::shared_ptr<const Mantid::API::MatrixWorkspace> getWorkspace() const;
   const Mantid::Geometry::ComponentInfo &componentInfo() const;
   const Mantid::Geometry::DetectorInfo &detectorInfo() const;
+  const size_t timeIndex() const;
   /// Get the mask displayed but not yet applied as a MatrxWorkspace
   boost::shared_ptr<Mantid::API::MatrixWorkspace>
   getMaskMatrixWorkspace() const;
@@ -282,6 +283,7 @@ private:
   bool m_isPhysicalInstrument;
   std::unique_ptr<Mantid::Geometry::ComponentInfo> m_physicalComponentInfo;
   std::unique_ptr<Mantid::Geometry::DetectorInfo> m_physicalDetectorInfo;
+  size_t m_timeIndex;
 };
 
 } // MantidWidgets

@@ -84,7 +84,7 @@ InstrumentActor::InstrumentActor(const QString &wsName, bool autoscaling,
           wsName.toStdString())),
       m_ragged(true), m_autoscaling(autoscaling), m_defaultPos(),
       m_maskedColor(100, 100, 100), m_failedColor(200, 200, 200),
-      m_isPhysicalInstrument(false) {
+      m_isPhysicalInstrument(false), m_timeIndex(0) {
   // settings
   loadSettings();
 
@@ -98,7 +98,7 @@ InstrumentActor::InstrumentActor(const QString &wsName, bool autoscaling,
   for (size_t i = 0; i < componentInfo().size(); ++i) {
     if (!componentInfo().isDetector(i))
       m_components.push_back(i);
-    else if (detectorInfo().isMonitor(i))
+    else if (detectorInfo().isMonitor({i, m_timeIndex}))
       m_monitors.push_back(i);
   }
 
@@ -659,7 +659,7 @@ void InstrumentActor::resetColors() {
 
     if (mask)
       masked = mask->isMasked(detectorIDs[det]);
-    if (detInfo.isMasked(det) || masked)
+    if (detInfo.isMasked({det, m_timeIndex}) || masked)
       m_colors[det] = m_maskedColor;
     else {
       auto integratedValue = getIntegratedCounts(det);
@@ -740,12 +740,12 @@ void InstrumentActor::doDraw(bool picking) const {
           m_colors[i].paint();
         glPushMatrix();
         // Translate
-        auto pos = compInfo.position(i);
+        auto pos = compInfo.position({i, m_timeIndex});
         if (!pos.nullVector())
           glTranslated(pos[0], pos[1], pos[2]);
 
         // Rotate
-        auto rot = compInfo.rotation(i);
+        auto rot = compInfo.rotation({i, m_timeIndex});
         if (!rot.isNull()) {
           double deg, ax0, ax1, ax2;
           rot.getAngleAxis(deg, ax0, ax1, ax2);
@@ -794,7 +794,7 @@ void InstrumentActor::setupPickColors() {
 const Mantid::Kernel::V3D InstrumentActor::getDetPos(size_t pickID) const {
   const auto &detInfo = detectorInfo();
   if (pickID < detInfo.size()) {
-    return detInfo.position(pickID);
+    return detInfo.position({pickID, m_timeIndex});
   }
   return m_defaultPos;
 }
@@ -1351,6 +1351,8 @@ const Mantid::Geometry::DetectorInfo &InstrumentActor::detectorInfo() const {
   else
     return getWorkspace()->detectorInfo();
 }
+
+const size_t InstrumentActor::timeIndex() const { return m_timeIndex; }
 
 void InstrumentActor::invalidateDisplayLists() const {
   for (size_t i = 0; i < 2; ++i) {

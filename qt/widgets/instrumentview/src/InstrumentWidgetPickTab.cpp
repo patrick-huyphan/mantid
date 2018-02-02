@@ -863,6 +863,7 @@ QString ComponentInfoController::displayDetectorInfo(size_t index) {
   // collect info about selected detector and add it to text
   const auto &actor = m_instrWidget->getInstrumentActor();
   const auto &componentInfo = actor.componentInfo();
+  const auto timeIndex = actor.timeIndex();
   auto detid = actor.getDetID(index);
 
   text = "Selected detector: " +
@@ -872,7 +873,7 @@ QString ComponentInfoController::displayDetectorInfo(size_t index) {
   auto ws = actor.getWorkspaceIndex(index);
   wsIndex = ws == InstrumentActor::INVALID_INDEX ? "None" : QString::number(ws);
   text += "Workspace index: " + wsIndex + '\n';
-  Mantid::Kernel::V3D pos = componentInfo.position(index);
+  Mantid::Kernel::V3D pos = componentInfo.position({index, timeIndex});
   text += "xyz: " + QString::number(pos.X()) + "," + QString::number(pos.Y()) +
           "," + QString::number(pos.Z()) + '\n';
   double r, t, p;
@@ -909,10 +910,11 @@ QString ComponentInfoController::displayNonDetectorInfo(
     Mantid::Geometry::ComponentID compID) {
   const auto &actor = m_instrWidget->getInstrumentActor();
   const auto &componentInfo = actor.componentInfo();
+  const auto timeIndex = actor.timeIndex();
   auto component = componentInfo.indexOf(compID);
   QString text = "Selected component: ";
   text += QString::fromStdString(componentInfo.name(component)) + '\n';
-  Mantid::Kernel::V3D pos = componentInfo.position(component);
+  Mantid::Kernel::V3D pos = componentInfo.position({component, timeIndex});
   text += "xyz: " + QString::number(pos.X()) + "," + QString::number(pos.Y()) +
           "," + QString::number(pos.Z()) + '\n';
   double r, t, p;
@@ -1434,7 +1436,9 @@ void DetectorPlotController::prepareDataForIntegralsPlot(
     PREPAREDATAFORINTEGRALSPLOT_RETURN_FAILED
   }
 
-  auto normal = componentInfo.position(ass[1]) - componentInfo.position(ass[0]);
+  const auto timeIndex = actor.timeIndex();
+  auto normal = componentInfo.position({ass[1], timeIndex}) -
+                componentInfo.position({ass[0], timeIndex});
   normal.normalize();
   const auto &detectorInfo = actor.detectorInfo();
   for (auto det : ass) {
@@ -1442,10 +1446,10 @@ void DetectorPlotController::prepareDataForIntegralsPlot(
       auto id = detectorInfo.detectorIDs()[det];
       // get the x-value for detector idet
       double xvalue = 0;
-      auto pos = detectorInfo.position(det);
+      auto pos = detectorInfo.position({det, timeIndex});
       switch (m_tubeXUnits) {
       case LENGTH:
-        xvalue = pos.distance(detectorInfo.position(ass[0]));
+        xvalue = pos.distance(detectorInfo.position({ass[0], timeIndex}));
         break;
       case PHI:
         xvalue = bOffsetPsi ? getPhiOffset(pos, M_PI) : getPhi(pos);
