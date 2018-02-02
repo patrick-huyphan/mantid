@@ -733,32 +733,34 @@ void InstrumentActor::doDraw(bool picking) const {
       continue;
 
     if (compInfo.hasValidShape(i)) {
-      if (m_isCompVisible[i]) {
-        if (picking)
-          m_pickColors[i].paint();
-        else
-          m_colors[i].paint();
-        glPushMatrix();
-        // Translate
-        auto pos = compInfo.position({i, m_timeIndex});
-        if (!pos.nullVector())
-          glTranslated(pos[0], pos[1], pos[2]);
+      for (size_t j = 0; j < compInfo.scanCount(i); ++j) {
+        if (m_isCompVisible[i]) {
+          if (picking)
+            m_pickColors[i].paint();
+          else
+            m_colors[i].paint();
+          glPushMatrix();
+          // Translate
+          auto pos = compInfo.position({i, j});
+          if (!pos.nullVector())
+            glTranslated(pos[0], pos[1], pos[2]);
 
-        // Rotate
-        auto rot = compInfo.rotation({i, m_timeIndex});
-        if (!rot.isNull()) {
-          double deg, ax0, ax1, ax2;
-          rot.getAngleAxis(deg, ax0, ax1, ax2);
-          glRotated(deg, ax0, ax1, ax2);
+          // Rotate
+          auto rot = compInfo.rotation({i, j});
+          if (!rot.isNull()) {
+            double deg, ax0, ax1, ax2;
+            rot.getAngleAxis(deg, ax0, ax1, ax2);
+            glRotated(deg, ax0, ax1, ax2);
+          }
+
+          // Scale
+          auto scale = compInfo.scaleFactor(i);
+          if (scale != Kernel::V3D(1, 1, 1))
+            glScaled(scale[0], scale[1], scale[2]);
+
+          compInfo.shape(i).draw();
+          glPopMatrix();
         }
-
-        // Scale
-        auto scale = compInfo.scaleFactor(i);
-        if (scale != Kernel::V3D(1, 1, 1))
-          glScaled(scale[0], scale[1], scale[2]);
-
-        compInfo.shape(i).draw();
-        glPopMatrix();
       }
     }
   }

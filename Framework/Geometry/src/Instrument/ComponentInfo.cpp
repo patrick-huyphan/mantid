@@ -295,22 +295,27 @@ double ComponentInfo::solidAngle(const size_t componentIndex,
  */
 template <typename IteratorT>
 void ComponentInfo::growBoundingBoxAsRectuangularBank(
-    size_t index, const Geometry::BoundingBox *reference,
+    std::pair<size_t, size_t> index, const Geometry::BoundingBox *reference,
     Geometry::BoundingBox &mutableBB,
     std::map<size_t, size_t> &mutableDetExclusions,
     IteratorT &mutableIterator) const {
 
-  auto panel = quadrilateralComponent(index);
-  mutableBB.grow(componentBoundingBox(panel.bottomLeft, reference));
-  mutableBB.grow(componentBoundingBox(panel.topRight, reference));
-  mutableBB.grow(componentBoundingBox(panel.topLeft, reference));
-  mutableBB.grow(componentBoundingBox(panel.bottomRight, reference));
+  auto panel = quadrilateralComponent(index.first);
+  mutableBB.grow(
+      componentBoundingBox({panel.bottomLeft, index.second}, reference));
+  mutableBB.grow(
+      componentBoundingBox({panel.topRight, index.second}, reference));
+  mutableBB.grow(
+      componentBoundingBox({panel.topLeft, index.second}, reference));
+  mutableBB.grow(
+      componentBoundingBox({panel.bottomRight, index.second}, reference));
 
   // Get bounding box for rectangular bank.
   // Record detector ranges to skip
   mutableDetExclusions.insert(std::make_pair(panel.bottomLeft, panel.topRight));
   // Skip all sub components.
-  const auto innerRangeComp = m_componentInfo->componentRangeInSubtree(index);
+  const auto innerRangeComp =
+      m_componentInfo->componentRangeInSubtree(index.first);
   mutableIterator = innerRangeComp.rend();
 }
 
@@ -329,11 +334,11 @@ void ComponentInfo::growBoundingBoxAsRectuangularBank(
  */
 template <typename IteratorT>
 void ComponentInfo::growBoundingBoxAsOutline(
-    size_t index, const BoundingBox *reference, BoundingBox &mutableBB,
-    std::map<size_t, size_t> &mutableDetExclusions,
+    std::pair<size_t, size_t> index, const BoundingBox *reference,
+    BoundingBox &mutableBB, std::map<size_t, size_t> &mutableDetExclusions,
     IteratorT &mutableIterator) const {
 
-  auto rangeDet = m_componentInfo->detectorRangeInSubtree(index);
+  auto rangeDet = m_componentInfo->detectorRangeInSubtree(index.first);
   if (!rangeDet.empty()) {
     auto startIndex = *rangeDet.begin();
     auto endIndex = *(rangeDet.end() - 1);
@@ -359,9 +364,10 @@ void ComponentInfo::growBoundingBoxAsOutline(
  * @param detectorExclusions : ranges of detector indices NOT to consider.
  */
 void ComponentInfo::growBoundingBoxByDetectors(
-    size_t index, const BoundingBox *reference, BoundingBox &mutableBB,
+    std::pair<size_t, size_t> index, const BoundingBox *reference,
+    BoundingBox &mutableBB,
     const std::map<size_t, size_t> &detectorExclusions) const {
-  auto rangeDet = m_componentInfo->detectorRangeInSubtree(index);
+  auto rangeDet = m_componentInfo->detectorRangeInSubtree(index.first);
   auto detIt = rangeDet.begin();
   auto exclIt = detectorExclusions.begin();
   while (detIt != rangeDet.end()) {
@@ -374,7 +380,7 @@ void ComponentInfo::growBoundingBoxByDetectors(
       // range again.
       ++exclIt;
     } else {
-      mutableBB.grow(componentBoundingBox(*detIt, reference));
+      mutableBB.grow(componentBoundingBox({*detIt, index.second}, reference));
       ++detIt;
     }
   }
@@ -389,17 +395,17 @@ void ComponentInfo::growBoundingBoxByDetectors(
  * @return Absolute bounding box.
  */
 BoundingBox
-ComponentInfo::componentBoundingBox(const size_t index,
+ComponentInfo::componentBoundingBox(const std::pair<size_t, size_t> index,
                                     const BoundingBox *reference) const {
   // Check that we have a valid shape here
-  if (!hasValidShape(index)) {
+  if (!hasValidShape(index.first)) {
     return BoundingBox(); // Return null bounding box
   }
-  const auto &s = this->shape(index);
+  const auto &s = this->shape(index.first);
   BoundingBox absoluteBB = s.getBoundingBox();
 
   // modify in place for speed
-  const Eigen::Vector3d scaleFactor = m_componentInfo->scaleFactor(index);
+  const Eigen::Vector3d scaleFactor = m_componentInfo->scaleFactor(index.first);
   // Scale
   absoluteBB.xMin() *= scaleFactor[0];
   absoluteBB.xMax() *= scaleFactor[0];
@@ -446,7 +452,7 @@ ComponentInfo::componentBoundingBox(const size_t index,
 BoundingBox ComponentInfo::boundingBox(const size_t componentIndex,
                                        const BoundingBox *reference) const {
   if (isDetector(componentIndex)) {
-    return componentBoundingBox(componentIndex, reference);
+    return componentBoundingBox({componentIndex, 0}, reference);
   }
   BoundingBox absoluteBB;
   auto rangeComp = m_componentInfo->componentRangeInSubtree(componentIndex);
@@ -458,21 +464,54 @@ BoundingBox ComponentInfo::boundingBox(const size_t componentIndex,
     if (hasSource() && index == source()) {
       ++compIterator;
     } else if (compFlag == Beamline::ComponentType::Rectangular) {
-      growBoundingBoxAsRectuangularBank(index, reference, absoluteBB,
+      growBoundingBoxAsRectuangularBank({index, 0}, reference, absoluteBB,
                                         detExclusions, compIterator);
     } else if (compFlag == Beamline::ComponentType::OutlineComposite) {
-      growBoundingBoxAsOutline(index, reference, absoluteBB, detExclusions,
+      growBoundingBoxAsOutline({index, 0}, reference, absoluteBB, detExclusions,
                                compIterator);
     } else {
       // General case
-      absoluteBB.grow(componentBoundingBox(index, reference));
+      absoluteBB.grow(componentBoundingBox({index, 0}, reference));
       ++compIterator;
     }
   }
 
   // Now deal with bounding boxes for detectors
-  growBoundingBoxByDetectors(componentIndex, reference, absoluteBB,
+  growBoundingBoxByDetectors({componentIndex, 0}, reference, absoluteBB,
                              detExclusions);
+  return absoluteBB;
+}
+
+BoundingBox ComponentInfo::boundingBox(const std::pair<size_t, size_t> index,
+                                       const BoundingBox *reference) const {
+  if (isDetector(index.first)) {
+    return componentBoundingBox(index, reference);
+  }
+  BoundingBox absoluteBB;
+  auto rangeComp = m_componentInfo->componentRangeInSubtree(index.first);
+  std::map<size_t, size_t> detExclusions{};
+  auto compIterator = rangeComp.rbegin();
+  while (compIterator != rangeComp.rend()) {
+    const size_t ind = *compIterator;
+    const auto compFlag = componentType(ind);
+    if (hasSource() && ind == source()) {
+      ++compIterator;
+    } else if (compFlag == Beamline::ComponentType::Rectangular) {
+      growBoundingBoxAsRectuangularBank({ind, index.second}, reference,
+                                        absoluteBB, detExclusions,
+                                        compIterator);
+    } else if (compFlag == Beamline::ComponentType::OutlineComposite) {
+      growBoundingBoxAsOutline({ind, index.second}, reference, absoluteBB,
+                               detExclusions, compIterator);
+    } else {
+      // General case
+      absoluteBB.grow(componentBoundingBox({ind, index.second}, reference));
+      ++compIterator;
+    }
+  }
+
+  // Now deal with bounding boxes for detectors
+  growBoundingBoxByDetectors(index, reference, absoluteBB, detExclusions);
   return absoluteBB;
 }
 
@@ -491,6 +530,10 @@ void ComponentInfo::merge(const ComponentInfo &other) {
 }
 
 size_t ComponentInfo::scanSize() const { return m_componentInfo->scanSize(); }
+
+size_t ComponentInfo::scanCount(const size_t componentIndex) const {
+  return m_componentInfo->scanCount(componentIndex);
+}
 
 } // namespace Geometry
 } // namespace Mantid

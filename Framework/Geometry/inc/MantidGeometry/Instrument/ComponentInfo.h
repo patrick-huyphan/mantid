@@ -65,25 +65,26 @@ private:
   boost::shared_ptr<std::vector<boost::shared_ptr<const Geometry::IObject>>>
       m_shapes;
 
-  BoundingBox componentBoundingBox(const size_t index,
+  BoundingBox componentBoundingBox(const std::pair<size_t, size_t> index,
                                    const BoundingBox *reference) const;
 
   /// Private copy constructor. Do not make public.
   ComponentInfo(const ComponentInfo &other);
   template <typename IteratorT>
   void growBoundingBoxAsRectuangularBank(
-      size_t index, const Geometry::BoundingBox *reference,
+      std::pair<size_t, size_t> index, const Geometry::BoundingBox *reference,
       Geometry::BoundingBox &mutableBB,
       std::map<size_t, size_t> &mutableDetExclusions,
       IteratorT &mutableIterator) const;
   template <typename IteratorT>
-  void growBoundingBoxAsOutline(size_t index,
+  void growBoundingBoxAsOutline(std::pair<size_t, size_t> index,
                                 const Geometry::BoundingBox *reference,
                                 Geometry::BoundingBox &mutableBB,
                                 std::map<size_t, size_t> &mutableDetExclusions,
                                 IteratorT &mutableIterator) const;
   void growBoundingBoxByDetectors(
-      size_t index, const BoundingBox *reference, BoundingBox &mutableBB,
+      std::pair<size_t, size_t> index, const BoundingBox *reference,
+      BoundingBox &mutableBB,
       const std::map<size_t, size_t> &detectorExclusions) const;
 
 public:
@@ -156,10 +157,13 @@ public:
                     const Kernel::V3D &observer) const;
   BoundingBox boundingBox(const size_t componentIndex,
                           const BoundingBox *reference = nullptr) const;
+  BoundingBox boundingBox(const std::pair<size_t, size_t> index,
+                          const BoundingBox *reference = nullptr) const;
   Beamline::ComponentType componentType(const size_t componentIndex) const;
   void setScanInterval(const std::pair<int64_t, int64_t> &interval);
   void merge(const ComponentInfo &other);
   size_t scanSize() const;
+  size_t scanCount(const size_t componentIndex) const;
   friend class Instrument;
 };
 
