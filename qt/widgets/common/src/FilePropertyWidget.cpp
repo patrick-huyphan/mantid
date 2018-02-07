@@ -1,8 +1,10 @@
 #include "MantidQtWidgets/Common/FilePropertyWidget.h"
 #include "MantidKernel/System.h"
 #include "MantidKernel/Property.h"
-#include "MantidQtWidgets/Common/AlgorithmInputHistory.h"
+
 #include "MantidQtWidgets/Common/FileDialogHandler.h"
+
+#include "MantidQtWidgets/Common/AlgorithmInputHistory.h"
 
 using namespace Mantid::Kernel;
 
