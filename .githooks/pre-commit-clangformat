@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Copyright &copy; 2018 ISIS Rutherford Appleton Laboratory, NScD Oak Ridge
+# National Laboratory & European Spallation Source
+#
+# This file is part of Mantid.
+#
+# Mantid is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# Mantid is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Assumed to be called from the main pre-commit script such that die, against etc
+# are defined
+#set -x
+
+if git rev-parse --verify -q HEAD > /dev/null; then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+clang_format_path() {
+    which git-clang-format-6.0
+}
+
+check_formatting() {
+    local formatter=$1
+    local against=$2
+    local changed_cpp=$(git diff --cached --name-only --diff-filter=ACMRT $against | grep -E '^Framework|^MantidPlot|^qt' | grep -E '\.h$|\.cpp$|\.tcc')
+    if [ -z "$changed_cpp" ]; then
+        return
+    fi
+    local patch_file=/tmp/0001-clang-format-${against}.patch
+    local changes=$($formatter --quiet --style=file --diff -- $changed_cpp | tee $patch_file)
+    if [ -n "$changes" ]; then
+        echo "Changeset is not formatted according to the current clang-format rules."
+        echo "A patch has been saved in $patch_file. It can be applied with 'git apply $patch_file'"
+    fi
+}
+
+format_checker=$(clang_format_path)
+
+if [ -n "$format_checker" ]; then
+    bad=$(check_formatting $format_checker $against)
+    test -z "$bad" || die "$bad"
+fi

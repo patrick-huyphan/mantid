@@ -177,18 +177,25 @@ if ( GIT_FOUND )
     )
     # N.B. The variable comes back from 'git describe' with a line feed on the end, so we need to lose that
     string ( REGEX MATCH "(.*)[^\n]" GIT_TOP_LEVEL ${GIT_TOP_LEVEL} )
-    # Prefer symlinks on platforms that support it so we don't rely on cmake running to be up-to-date
+    # Prefer relative symlinks on platforms that support it so we don't rely on cmake running to be up-to-date
     # On Windows, we have to copy the file
     if ( WIN32 )
       execute_process ( COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GIT_TOP_LEVEL}/.githooks/pre-commit
                                                                       ${GIT_TOP_LEVEL}/.git/hooks )
+      execute_process ( COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GIT_TOP_LEVEL}/.githooks/pre-commit-clangformat
+                                                                      ${GIT_TOP_LEVEL}/.git/hooks )
       execute_process ( COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GIT_TOP_LEVEL}/.githooks/commit-msg
                                                                       ${GIT_TOP_LEVEL}/.git/hooks )
     else ()
-      execute_process ( COMMAND ${CMAKE_COMMAND} -E create_symlink ${GIT_TOP_LEVEL}/.githooks/pre-commit
-                                                                   ${GIT_TOP_LEVEL}/.git/hooks/pre-commit )
-      execute_process ( COMMAND ${CMAKE_COMMAND} -E create_symlink ${GIT_TOP_LEVEL}/.githooks/commit-msg
-                                                                   ${GIT_TOP_LEVEL}/.git/hooks/commit-msg )
+      execute_process ( COMMAND ${CMAKE_COMMAND} -E create_symlink ../../.githooks/pre-commit
+                                                                   .git/hooks/pre-commit
+                       WORKING_DIRECTORY ${GIT_TOP_LEVEL} )
+      execute_process ( COMMAND ${CMAKE_COMMAND} -E create_symlink ../../.githooks/pre-commit-clangformat
+                                                                   .git/hooks/pre-commit-clangformat
+                       WORKING_DIRECTORY ${GIT_TOP_LEVEL} )
+      execute_process ( COMMAND ${CMAKE_COMMAND} -E create_symlink ../../.githooks/commit-msg
+                                                                   .git/hooks/commit-msg
+                       WORKING_DIRECTORY ${GIT_TOP_LEVEL} )
     endif ()
 
   endif()
