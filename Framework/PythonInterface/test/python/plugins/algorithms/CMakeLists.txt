@@ -41,7 +41,6 @@ set ( TEST_PY_FILES
   FindReflectometryLinesTest.py
   FitGaussianTest.py
   FractionalIndexingTest.py
-  GSASIIRefineFitPeaksTest.py
   GetEiT0atSNSTest.py
   GetNegMuMuonicXRDTest.py
   IndirectTransmissionTest.py
