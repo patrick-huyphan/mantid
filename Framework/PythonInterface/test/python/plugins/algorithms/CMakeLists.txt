@@ -69,6 +69,7 @@ set ( TEST_PY_FILES
   NormaliseSpectraTest.py
   RetrieveRunInfoTest.py
   SANSWideAngleCorrectionTest.py
+  SANSWLNormCorrectionTest.py
   SaveNexusPDTest.py
   SavePlot1DAsJsonTest.py
   SaveReflectionsTest.py
