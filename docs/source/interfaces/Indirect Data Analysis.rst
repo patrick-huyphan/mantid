@@ -370,22 +370,22 @@ and *Use Delta Function* options in the interface.
 
       - :ref:`ProductFunction <func-ProductFunction>` (InelasticDiffRotDiscreteCircle)
 
-        - :ref:`Inelastic Diff Rot Discrete Circle <func-DiffRotDiscreteCircle>` 
+        - :ref:`Inelastic Diff Rot Discrete Circle <func-DiffRotDiscreteCircle>`
 
         - Temperature Correction
-		
+
       - :ref:`ProductFunction <func-ProductFunction>` (ElasticDiffSphere)
 
         - :ref:`Elastic Diff Sphere <func-DiffSphere>`
 
         - Temperature Correction
-		
+
       - :ref:`ProductFunction <func-ProductFunction>` (ElasticDiffRotDiscreteCircle)
 
         - :ref:`Elastic Diff Rot Discrete Circle <func-DiffRotDiscreteCircle>`
 
         - Temperature Correction
-		
+
       - :ref:`ProductFunction <func-ProductFunction>` (StretchedExpFT)
 
         - :ref:`StretchedExpFT <func-StretchedExpFT>`
@@ -533,18 +533,13 @@ Shift
 
 Polymer
   A single quasi-elastic peak with 3 different forms of shape. The theory behind
-  this is described elsewhere [1,2]. Briefly, polymer theory predicts 3 forms
+  this is described elsewhere :cite:`higgins1977,higgins1977_2`. Briefly, polymer theory predicts 3 forms
   of the :math:`I(Q,t)` in the form of :math:`exp(-at2/b)` where :math:`b` can
   be 2, 3 or 4. The Full Width Half-Maximum (FWHM) then has a Q-dependence
   (power law) of the form :math:`Qb`. The :math:`I(Q,t)` has been numerically
   Fourier transformed into :math:`I(Q, \omega)` and the :math:`I(Q, \omega)`
   have been fitted with functions of the form of a modified Lorentzian. These
   latter functions are used in the energy fitting procedures.
-
-References:
-
-1. J S Higgins, R E Ghosh, W S Howells & G Allen, `JCS Faraday II 73 40 (1977) <http://dx.doi.org/10.1039/F29777300040>`_
-2. J S Higgins, G Allen, R E Ghosh, W S Howells & B Farnoux, `Chem Phys Lett 49 197 (1977) <http://dx.doi.org/10.1016/0009-2614(77)80569-1>`_
 
 JumpFit
 -------
@@ -581,5 +576,10 @@ Plot Result
 
 Save Result
   Saves the result in the default save directory.
+
+.. rubric:: References
+
+.. bibliography:: ../references.bib
+   :filter: docname in docnames
 
 .. categories:: Interfaces Indirect
