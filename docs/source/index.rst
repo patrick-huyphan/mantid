@@ -30,6 +30,7 @@ Mantid Documentation
    api/index
    release/index
    training/index
+   references
 
 
 This is the documentation for Mantid |release|.
@@ -51,3 +52,4 @@ This is the documentation for Mantid |release|.
     - :ref:`Python <pythonapi>`
     - `C++ <http://doxygen.mantidproject.org/>`_ (Doxygen)
 * :ref:`release_notes`
+* :ref:`references`
