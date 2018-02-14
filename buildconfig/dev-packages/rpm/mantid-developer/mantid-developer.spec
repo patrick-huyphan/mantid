@@ -5,7 +5,7 @@
 %endif
 
 Name:           mantid-developer
-Version:        1.26
+Version:        1.27
 Release:        1%{?dist}
 Summary:        Meta Package to install dependencies for Mantid Development
 
@@ -62,6 +62,8 @@ Requires: python-pip
 %{?fedora:Requires: python2-qtconsole}
 Requires: python-sphinx
 Requires: python2-sphinx-bootstrap-theme
+%{?fedora:Requires: python2-sphinxcontrib-bibtex}
+%{?fedora:Requires: python3-sphinxcontrib-bibtex}
 Requires: PyYAML
 Requires: python2-mock
 Requires: qscintilla-devel
@@ -149,6 +151,9 @@ required for Mantid development.
 %files
 
 %changelog
+
+* Wed Feb 14 2018 Peter Peterson <petersonpf@ornl.gov>
+- Added python-sphinxcontrib-bibtex
 
 * Mon Jan 22 2018 Martyn Gigg <martyn.gigg@stfc.ac.uk>
 - Added qtawesome
