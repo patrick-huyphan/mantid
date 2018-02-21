@@ -31,6 +31,7 @@ from sans.command_interface.batch_csv_file_parser import BatchCsvParser
 from sans.common.constants import ALL_PERIODS
 from sans.gui_logic.models.beam_centre_model import BeamCentreModel
 from ui.sans_isis.work_handler import WorkHandler
+from sans.sans_batch import SANSCentreFinder
 
 try:
     import mantidplot
@@ -104,7 +105,7 @@ class RunTabPresenter(object):
         self._masking_table_presenter = MaskingTablePresenter(self)
 
         # Beam centre presenter
-        self._beam_centre_presenter = BeamCentrePresenter(self, WorkHandler, BeamCentreModel)
+        self._beam_centre_presenter = BeamCentrePresenter(self, WorkHandler, BeamCentreModel, SANSCentreFinder)
 
     def __del__(self):
         self._delete_dummy_input_workspace()
@@ -396,29 +397,22 @@ class RunTabPresenter(object):
         """
         Creates a processing string for the data processor widget
 
-        :return: A processing string for the data processor widget
+        :return: A dict of key:value pairs of processing-algorithm properties and values for the data processor widget
         """
-        global_options = ""
+        global_options = {}
 
         # Check if optimizations should be used
-        optimization_selection = "UseOptimizations=1" if self._view.use_optimizations else "UseOptimizations=0"
-        global_options += optimization_selection
+        global_options['UseOptimizations'] = "1" if self._view.use_optimizations else "0"
 
         # Get the output mode
         output_mode = self._view.output_mode
-        output_mode_selection = "OutputMode=" + OutputMode.to_string(output_mode)
-        global_options += ","
-        global_options += output_mode_selection
+        global_options['OutputMode'] = OutputMode.to_string(output_mode)
 
         # Check if results should be plotted
-        plot_results_selection = "PlotResults=1" if self._view.plot_results else "PlotResults=0"
-        global_options += ","
-        global_options += plot_results_selection
+        global_options['PlotResults'] = "1" if self._view.plot_results else "0"
 
         # Get the name of the graph to output to
-        output_graph_selection = "OutputGraph={}".format(self.output_graph)
-        global_options += ","
-        global_options += output_graph_selection
+        global_options['OutputGraph'] = "{}".format(self.output_graph)
         return global_options
 
     # ------------------------------------------------------------------------------------------------------------------
