@@ -20,6 +20,7 @@
 #include "MantidQtWidgets/InstrumentView/SimpleWidget.h"
 #include "MantidQtWidgets/InstrumentView/UnwrappedCylinder.h"
 #include "MantidQtWidgets/InstrumentView/UnwrappedSphere.h"
+#include "MantidQtWidgets/InstrumentView/TimeIndexControl.h"
 #include "MantidQtWidgets/InstrumentView/XIntegrationControl.h"
 
 #include <Poco/ActiveResult.h>
@@ -124,6 +125,12 @@ InstrumentWidget::InstrumentWidget(const QString &wsName, QWidget *parent,
   mainLayout->addWidget(m_xIntegration);
   connect(m_xIntegration, SIGNAL(changed(double, double)), this,
           SLOT(setIntegrationRange(double, double)));
+
+  m_timeIndexController = new TimeIndexControl(this);
+  mainLayout->addWidget(m_timeIndexController);
+  connect(m_timeIndexController, SIGNAL(changed(double, double)), this,
+          SLOT(setTimeIndexRange(double, double)));
+
 
   // Set the mouse/keyboard operation info and help button
   QHBoxLayout *infoLayout = new QHBoxLayout();
@@ -252,10 +259,22 @@ void InstrumentWidget::init(bool resetGeometry, bool autoscaling,
   // Previously in (now removed) setWorkspaceName method
   m_instrumentActor.reset(
       new InstrumentActor(m_workspaceName, autoscaling, scaleMin, scaleMax));
-  m_xIntegration->setTotalRange(m_instrumentActor->minBinValue(),
-                                m_instrumentActor->maxBinValue());
-  m_xIntegration->setUnits(QString::fromStdString(
-      m_instrumentActor->getWorkspace()->getAxis(0)->unit()->caption()));
+
+  if (m_instrumentActor->isSingleCount()) {
+    m_xIntegration->disable();
+  } else {
+    m_xIntegration->setTotalRange(m_instrumentActor->minBinValue(),
+                                  m_instrumentActor->maxBinValue());
+    m_xIntegration->setUnits(QString::fromStdString(
+        m_instrumentActor->getWorkspace()->getAxis(0)->unit()->caption()));
+  }
+
+  if (m_instrumentActor->isScanning()) {
+    m_timeIndexController->setTotalRange(0, m_instrumentActor->maxTimeIndex());
+  } else {
+    m_timeIndexController->disable();
+  }
+
   auto surface = getSurface();
   if (resetGeometry || !surface) {
     if (setDefaultView) {
@@ -811,11 +830,31 @@ void InstrumentWidget::setIntegrationRange(double xmin, double xmax) {
 }
 
 /**
+* Set new time index range but don't update TimeIndexControl (because the
+* control calls this slot)
+*/
+void InstrumentWidget::setTimeIndexRange(double xmin, double xmax) {
+  //TODO
+  m_instrumentActor->setTimeIndexRange(xmin, xmax);
+  setupColorMap();
+  updateInstrumentDetectors();
+  emit timeIndexRangeChanged(xmin, xmax);
+}
+
+/**
 * Set new integration range and update XIntegrationControl. To be called from
 * python.
 */
 void InstrumentWidget::setBinRange(double xmin, double xmax) {
   m_xIntegration->setRange(xmin, xmax);
+}
+
+/**
+* Set new time index range and update TimeIndexController. To be called from
+* python.
+*/
+void InstrumentWidget::setTimeIntervalRange(double xmin, double xmax) {
+  m_timeIndexController->setRange(xmin, xmax);
 }
 
 /**
@@ -1186,6 +1225,8 @@ void InstrumentWidget::createTabs(QSettings &settings) {
           this, SLOT(executeAlgorithm(const QString &, const QString &)));
   connect(m_xIntegration, SIGNAL(changed(double, double)), maskTab,
           SLOT(changedIntegrationRange(double, double)));
+  connect(m_timeIndexController, SIGNAL(changed(double, double)), maskTab,
+          SLOT(changedTimeIndexRange(double, double)));
   maskTab->loadSettings(settings);
 
   // Instrument tree controls
@@ -1387,6 +1428,8 @@ std::string InstrumentWidget::saveToProject() const {
   tsv.writeLine("CurrentTab") << getCurrentTab();
   tsv.writeLine("EnergyTransfer") << m_xIntegration->getMinimum()
                                   << m_xIntegration->getMaximum();
+  tsv.writeLine("TimeIndex") << m_timeIndexController->getMinimum()
+                             << m_timeIndexController->getMaximum();
 
   // serialise widget subsections
   tsv.writeSection("actor", m_instrumentActor->saveToProject());
@@ -1447,6 +1490,12 @@ void InstrumentWidget::loadFromProject(const std::string &lines) {
     double min, max;
     tsv >> min >> max;
     setBinRange(min, max);
+  }
+
+  if (tsv.selectLine("TimeIndex")) {
+    double min, max;
+    tsv >> min >> max;
+    setTimeIntervalRange(min, max);
   }
 
   if (tsv.selectSection("Surface")) {

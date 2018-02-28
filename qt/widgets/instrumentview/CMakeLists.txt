@@ -28,6 +28,7 @@ set ( SRC_FILES
 	src/Shape2D.cpp
 	src/Shape2DCollection.cpp
 	src/SimpleWidget.cpp
+        src/TimeIndexControl.cpp
 	src/UCorrectionDialog.cpp
 	src/UnwrappedCylinder.cpp
 	src/UnwrappedDetector.cpp
@@ -56,6 +57,7 @@ set ( MOC_FILES
   inc/MantidQtWidgets/InstrumentView/ProjectionSurface.h
   inc/MantidQtWidgets/InstrumentView/Projection3D.h
   inc/MantidQtWidgets/InstrumentView/Shape2DCollection.h
+  inc/MantidQtWidgets/InstrumentView/TimeIndexControl.h
   inc/MantidQtWidgets/InstrumentView/UnwrappedSurface.h
   inc/MantidQtWidgets/InstrumentView/UCorrectionDialog.h
   inc/MantidQtWidgets/InstrumentView/XIntegrationControl.h
@@ -93,6 +95,7 @@ set ( INC_FILES
 	inc/MantidQtWidgets/InstrumentView/Shape2D.h
 	inc/MantidQtWidgets/InstrumentView/Shape2DCollection.h
 	inc/MantidQtWidgets/InstrumentView/SimpleWidget.h
+        inc/MantidQtWidgets/InstrumentView/TimeIndexControl.h
 	inc/MantidQtWidgets/InstrumentView/UCorrectionDialog.h
 	inc/MantidQtWidgets/InstrumentView/UnwrappedCylinder.h
 	inc/MantidQtWidgets/InstrumentView/UnwrappedDetector.h

@@ -1,4 +1,4 @@
-#include "MantidQtWidgets/InstrumentView/XIntegrationControl.h"
+#include "MantidQtWidgets/InstrumentView/TimeIndexControl.h"
 #include "MantidQtWidgets/InstrumentView/InstrumentWidget.h"
 
 #include "MantidKernel/ConfigService.h"
@@ -19,20 +19,20 @@
 namespace MantidQt {
 namespace MantidWidgets {
 
-XIntegrationScrollBar::XIntegrationScrollBar(QWidget *parent)
+TimeIndexScrollBar::TimeIndexScrollBar(QWidget *parent)
     : QFrame(parent), m_resizeMargin(5), m_init(false), m_resizingLeft(false),
       m_resizingRight(false), m_moving(false), m_changed(false), m_x(0),
-      m_width(0), m_minimum(0.0), m_maximum(1.0) {
+      m_width(1), m_minimum(0.0), m_maximum(1.0) {
   setMouseTracking(true);
   setFrameShape(StyledPanel);
   m_slider = new QPushButton(this);
   m_slider->setMouseTracking(true);
   m_slider->move(0, 0);
   m_slider->installEventFilter(this);
-  m_slider->setToolTip("Resize to change integration range");
+  m_slider->setToolTip("Resize to change the time index in the scan");
 }
 
-void XIntegrationScrollBar::resizeEvent(QResizeEvent *) {
+void TimeIndexScrollBar::resizeEvent(QResizeEvent *) {
   if (!m_init) {
     m_slider->resize(width(), height());
     m_init = true;
@@ -41,7 +41,7 @@ void XIntegrationScrollBar::resizeEvent(QResizeEvent *) {
   }
 }
 
-void XIntegrationScrollBar::mouseMoveEvent(QMouseEvent *e) {
+void TimeIndexScrollBar::mouseMoveEvent(QMouseEvent *e) {
   QFrame::mouseMoveEvent(e);
 }
 
@@ -50,7 +50,7 @@ void XIntegrationScrollBar::mouseMoveEvent(QMouseEvent *e) {
 * @param object :: pointer to the slider
 * @param e :: event
 */
-bool XIntegrationScrollBar::eventFilter(QObject *object, QEvent *e) {
+bool TimeIndexScrollBar::eventFilter(QObject *object, QEvent *e) {
   QPushButton *slider = dynamic_cast<QPushButton *>(object);
   if (!slider)
     return false;
@@ -127,25 +127,25 @@ bool XIntegrationScrollBar::eventFilter(QObject *object, QEvent *e) {
 /**
 * Return the minimum value (between 0 and 1)
 */
-double XIntegrationScrollBar::getMinimum() const { return m_minimum; }
+double TimeIndexScrollBar::getMinimum() const { return m_minimum; }
 
 /**
 * Return the maximum value (between 0 and 1)
 */
-double XIntegrationScrollBar::getMaximum() const { return m_maximum; }
+double TimeIndexScrollBar::getMaximum() const { return m_maximum; }
 
 /**
 * Return the width == maximum - minimum (value is between 0 and 1)
 */
-double XIntegrationScrollBar::getWidth() const { return m_maximum - m_minimum; }
+double TimeIndexScrollBar::getWidth() const { return m_maximum - m_minimum; }
 
 /**
 * Set new minimum and maximum values
 */
-void XIntegrationScrollBar::set(double minimum, double maximum) {
+void TimeIndexScrollBar::set(double minimum, double maximum) {
   if (minimum < 0 || minimum > 1. || maximum < 0 || maximum > 1.) {
     throw std::invalid_argument(
-        "XIntegrationScrollBar : minimum and maximum must be between 0 and 1");
+        "TimeIndexScrollBar : minimum and maximum must be between 0 and 1");
   }
   if (minimum > maximum) {
     std::swap(minimum, maximum);
@@ -161,7 +161,7 @@ void XIntegrationScrollBar::set(double minimum, double maximum) {
   m_slider->resize(w, this->height());
 }
 
-void XIntegrationScrollBar::updateMinMax() {
+void TimeIndexScrollBar::updateMinMax() {
   m_minimum = double(m_slider->x()) / this->width();
   m_maximum = m_minimum + double(m_slider->width()) / this->width();
   emit running(m_minimum, m_maximum);
@@ -169,22 +169,21 @@ void XIntegrationScrollBar::updateMinMax() {
 
 //---------------------------------------------------------------------------------//
 
-XIntegrationControl::XIntegrationControl(InstrumentWidget *instrWindow)
+TimeIndexControl::TimeIndexControl(InstrumentWidget *instrWindow)
     : QFrame(instrWindow), m_instrWindow(instrWindow), m_totalMinimum(0),
       m_totalMaximum(1), m_minimum(0), m_maximum(1) {
-  m_scrollBar = new XIntegrationScrollBar(this);
+  m_scrollBar = new TimeIndexScrollBar(this);
   QHBoxLayout *layout = new QHBoxLayout();
   m_minText = new QLineEdit(this);
   m_minText->setMaximumWidth(100);
-  m_minText->setToolTip("Minimum x value");
+  m_minText->setToolTip("Minimum time index");
   m_maxText = new QLineEdit(this);
   m_maxText->setMaximumWidth(100);
-  m_maxText->setToolTip("Maximum x value");
-  m_units = new QLabel("TOF", this);
+  m_maxText->setToolTip("Maximum time index");
   m_setWholeRange = new QPushButton("Reset");
-  m_setWholeRange->setToolTip("Reset integration range to maximum");
+  m_setWholeRange->setToolTip("Reset time index range to maximum");
 
-  layout->addWidget(m_units, 0);
+  layout->addWidget(new QLabel("Time Index"));
   layout->addWidget(m_minText, 0);
   layout->addWidget(m_scrollBar, 1);
   layout->addWidget(m_maxText, 0);
@@ -200,16 +199,7 @@ XIntegrationControl::XIntegrationControl(InstrumentWidget *instrWindow)
   updateTextBoxes();
 }
 
-void XIntegrationControl::disable() {
-    m_scrollBar->setDisabled(true);
-    m_minText->setDisabled(true);
-    m_maxText->setDisabled(true);
-    m_units->setDisabled(true);
-    m_setWholeRange->setDisabled(true);
-    this->setDisabled(true);
-}
-
-void XIntegrationControl::sliderChanged(double minimum, double maximum) {
+void TimeIndexControl::sliderChanged(double minimum, double maximum) {
   double w = m_totalMaximum - m_totalMinimum;
   m_minimum = m_totalMinimum + minimum * w;
   m_maximum = m_totalMinimum + maximum * w;
@@ -221,14 +211,14 @@ void XIntegrationControl::sliderChanged(double minimum, double maximum) {
   emit changed(m_minimum, m_maximum);
 }
 
-void XIntegrationControl::sliderRunning(double minimum, double maximum) {
+void TimeIndexControl::sliderRunning(double minimum, double maximum) {
   double w = m_totalMaximum - m_totalMinimum;
   m_minimum = m_totalMinimum + minimum * w;
   m_maximum = m_totalMinimum + maximum * w;
   updateTextBoxes();
 }
 
-void XIntegrationControl::setTotalRange(double minimum, double maximum) {
+void TimeIndexControl::setTotalRange(double minimum, double maximum) {
   if (minimum > maximum) {
     std::swap(minimum, maximum);
   }
@@ -239,7 +229,7 @@ void XIntegrationControl::setTotalRange(double minimum, double maximum) {
   updateTextBoxes();
 }
 
-void XIntegrationControl::setRange(double minimum, double maximum) {
+void TimeIndexControl::setRange(double minimum, double maximum) {
   if (minimum > maximum) {
     std::swap(minimum, maximum);
   }
@@ -258,24 +248,24 @@ void XIntegrationControl::setRange(double minimum, double maximum) {
   emit changed(m_minimum, m_maximum);
 }
 
-void XIntegrationControl::setWholeRange() {
+void TimeIndexControl::setWholeRange() {
   setRange(m_totalMinimum, m_totalMaximum);
 }
 
-double XIntegrationControl::getMinimum() const { return m_minimum; }
+double TimeIndexControl::getMinimum() const { return m_minimum; }
 
-double XIntegrationControl::getMaximum() const { return m_maximum; }
+double TimeIndexControl::getMaximum() const { return m_maximum; }
 
-double XIntegrationControl::getWidth() const { return m_maximum - m_minimum; }
+double TimeIndexControl::getWidth() const { return m_maximum - m_minimum; }
 
-void XIntegrationControl::updateTextBoxes() {
+void TimeIndexControl::updateTextBoxes() {
   m_minText->setText(QString::number(m_minimum));
   m_maxText->setText(QString::number(m_maximum));
   m_setWholeRange->setEnabled(m_minimum != m_totalMinimum ||
                               m_maximum != m_totalMaximum);
 }
 
-void XIntegrationControl::setMinimum() {
+void TimeIndexControl::setMinimum() {
   bool ok;
   QString text = m_minText->text();
   double minValue = text.toDouble(&ok);
@@ -285,7 +275,7 @@ void XIntegrationControl::setMinimum() {
   setRange(minValue, maxValue);
 }
 
-void XIntegrationControl::setMaximum() {
+void TimeIndexControl::setMaximum() {
   bool ok;
   QString text = m_maxText->text();
   double maxValue = text.toDouble(&ok);
@@ -295,8 +285,13 @@ void XIntegrationControl::setMaximum() {
   setRange(minValue, maxValue);
 }
 
-void XIntegrationControl::setUnits(const QString &units) {
-  m_units->setText(units);
+void TimeIndexControl::disable() {
+    m_minText->setDisabled(true);
+    m_maxText->setDisabled(true);
+    m_setWholeRange->setDisabled(true);
+    m_scrollBar->setDisabled(true);
+    this->setDisabled(true);
 }
+
 } // MantidWidgets
 } // MantidQt

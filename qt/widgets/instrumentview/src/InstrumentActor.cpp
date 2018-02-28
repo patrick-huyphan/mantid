@@ -84,7 +84,7 @@ InstrumentActor::InstrumentActor(const QString &wsName, bool autoscaling,
           wsName.toStdString())),
       m_ragged(true), m_autoscaling(autoscaling), m_defaultPos(),
       m_maskedColor(100, 100, 100), m_failedColor(200, 200, 200),
-      m_isPhysicalInstrument(false), m_timeIndex(0) {
+      m_isPhysicalInstrument(false), m_timeIndex(0), m_isScanning(false), m_isSingleCount(false) {
   // settings
   loadSettings();
 
@@ -95,10 +95,13 @@ InstrumentActor::InstrumentActor(const QString &wsName, bool autoscaling,
         "InstrumentActor passed a workspace that isn't a MatrixWorkspace");
   setupPhysicalInstrumentIfExists();
 
+  m_isScanning = detectorInfo().isScanning();
+  m_isSingleCount = sharedWorkspace->blocksize() == 1;
+
   for (size_t i = 0; i < componentInfo().size(); ++i) {
     if (!componentInfo().isDetector(i))
       m_components.push_back(i);
-    else if (detectorInfo().isMonitor({i, m_timeIndex}))
+    else if (detectorInfo().isMonitor(i))
       m_monitors.push_back(i);
   }
 
@@ -453,6 +456,21 @@ void InstrumentActor::setIntegrationRange(const double &xmin,
   resetColors();
 }
 
+/**
+ * Set an interval in the data workspace x-vector's units in which the data are
+ * to be
+ * integrated to calculate the detector colours.
+ *
+ * @param xmin :: The lower bound.
+ * @param xmax :: The upper bound.
+ */
+void InstrumentActor::setTimeIndexRange(double xmin,
+                                        double xmax) {
+  //setDataIntegrationRange(xmin, xmax);
+  //resetColors();
+  //#TODO
+}
+
 /** Gives the total signal in the spectrum relating to the given detector
  *  @param index The detector index
  *  @return The signal
@@ -778,9 +796,8 @@ void InstrumentActor::loadColorMap(const QString &fname, bool reset_colors) {
 //------------------------------------------------------------------------------
 void InstrumentActor::setupPickColors() {
   const auto &compInfo = componentInfo();
-  m_pickColors.resize(compInfo.size());
-
-  for (size_t i = 0; i < compInfo.size(); ++i) {
+  m_pickColors.resize(compInfo.scanSize());
+  for (size_t i = 0; i < compInfo.scanSize(); ++i) {
     m_pickColors[i] = makePickColor(i);
   }
 }
@@ -1377,6 +1394,9 @@ size_t InstrumentActor::decodePickColor(const QRgb &c) {
   return decodePickColorRGB(static_cast<unsigned char>(qRed(c)),
                             static_cast<unsigned char>(qGreen(c)),
                             static_cast<unsigned char>(qBlue(c)));
+}
+size_t InstrumentActor::maxTimeIndex() const {
+    return detectorInfo().scanCount(0);
 }
 } // namespace MantidWidgets
 } // namespace MantidQt

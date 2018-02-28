@@ -46,6 +46,7 @@ class InstrumentWidgetTab;
 class InstrumentWidgetRenderTab;
 class OneCurvePlot;
 class CollapsiblePanel;
+class TimeIndexControl;
 class XIntegrationControl;
 class SimpleWidget;
 class ProjectionSurface;
@@ -157,6 +158,7 @@ signals:
   void scaleTypeChanged(int);
   void nthPowerChanged(double);
   void integrationRangeChanged(double, double);
+  void timeIndexRangeChanged(double, double);
   void glOptionChanged(bool);
   void requestSelectComponent(const QString &);
   void preDeletingHandle();
@@ -185,8 +187,10 @@ public slots:
   void changeColorMapMaxValue(double maxValue);               // Deprecated
   void changeColorMapRange(double minValue, double maxValue); // Deprecated
   void setIntegrationRange(double, double);
+  void setTimeIndexRange(double, double);
   void setBinRange(double, double);
   void setColorMapAutoscaling(bool); // Deprecated
+  void setTimeIntervalRange(double, double);
 
   void setViewDirection(const QString &);
   void pickBackgroundColor();
@@ -247,6 +251,7 @@ protected:
   QList<InstrumentWidgetTab *> m_tabs;
   InstrumentWidgetRenderTab *m_renderTab;
   XIntegrationControl *m_xIntegration;
+  TimeIndexControl *m_timeIndexController;
   /// The OpenGL widget to display the instrument
   MantidGLWidget *m_InstrumentDisplay;
   /// The simple widget to display the instrument

@@ -110,6 +110,8 @@ public:
 
   /// Set the integration range.
   void setIntegrationRange(const double &xmin, const double &xmax);
+  /// Set the time index range.
+  void setTimeIndexRange(double xmin, double xmax);
   /// Get the minimum data value on the color map scale.
   double minValue() const { return m_DataMinScaleValue; }
   /// Get the maximum data value on the color map scale.
@@ -126,6 +128,7 @@ public:
   double minBinValue() const { return m_BinMinValue; }
   /// Get the upper bound of the integration range.
   double maxBinValue() const { return m_BinMaxValue; }
+  size_t maxTimeIndex() const;
   /// Return true if the integration range covers the whole of the x-axis in the
   /// data workspace.
   bool wholeRange() const;
@@ -188,6 +191,8 @@ public:
   void initMaskHelper() const;
   bool hasMaskWorkspace() const;
   bool hasBinMask() const;
+  bool isScanning() const { return m_isScanning; }
+  bool isSingleCount() const { return m_isSingleCount; }
   QString getParameterInfo(size_t index) const;
   std::string getDefaultAxis() const;
   std::string getDefaultView() const;
@@ -284,6 +289,8 @@ private:
   std::unique_ptr<Mantid::Geometry::ComponentInfo> m_physicalComponentInfo;
   std::unique_ptr<Mantid::Geometry::DetectorInfo> m_physicalDetectorInfo;
   size_t m_timeIndex;
+  bool m_isScanning;
+  bool m_isSingleCount;
 };
 
 } // MantidWidgets

@@ -1,5 +1,5 @@
-#ifndef XINTEGRATIONCONTROL_H_
-#define XINTEGRATIONCONTROL_H_
+#ifndef TIMEINDEXCONTROL_H_
+#define TIMEINDEXCONTROL_H_
 
 #include <QFrame>
 #include <QScrollBar>
@@ -16,10 +16,10 @@ namespace MantidWidgets {
 
 class InstrumentWidget;
 
-class XIntegrationScrollBar : public QFrame {
+class TimeIndexScrollBar : public QFrame {
   Q_OBJECT
 public:
-  explicit XIntegrationScrollBar(QWidget *parent);
+  explicit TimeIndexScrollBar(QWidget *parent);
   double getMinimum() const;
   double getMaximum() const;
   double getWidth() const;
@@ -49,14 +49,13 @@ private:
 };
 
 /**
-* Implements a control for setting the x integration range
+* Implements a control for setting the time index range
 */
-class XIntegrationControl : public QFrame {
+class TimeIndexControl : public QFrame {
   Q_OBJECT
 public:
-  explicit XIntegrationControl(InstrumentWidget *instrWindow);
+  explicit TimeIndexControl(InstrumentWidget *instrWindow);
   void setTotalRange(double minimum, double maximum);
-  void setUnits(const QString &units);
   void setRange(double minimum, double maximum);
   double getMinimum() const;
   double getMaximum() const;
@@ -75,10 +74,9 @@ private slots:
 private:
   void updateTextBoxes();
   InstrumentWidget *m_instrWindow;
-  XIntegrationScrollBar *m_scrollBar;
+  TimeIndexScrollBar *m_scrollBar;
   QLineEdit *m_minText;
   QLineEdit *m_maxText;
-  QLabel *m_units;
   QPushButton *m_setWholeRange;
   double m_totalMinimum;
   double m_totalMaximum;
@@ -88,4 +86,4 @@ private:
 } // MantidWidgets
 } // MantidQt
 
-#endif /*XINTEGRATIONCONTROL_H_*/
+#endif /*TIMEINDEXCONTROL_H_*/
