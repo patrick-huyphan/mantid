@@ -72,7 +72,7 @@ public:
   boost::shared_ptr<const Mantid::API::MatrixWorkspace> getWorkspace() const;
   const Mantid::Geometry::ComponentInfo &componentInfo() const;
   const Mantid::Geometry::DetectorInfo &detectorInfo() const;
-  const size_t timeIndex() const;
+  size_t timeIndex() const;
   /// Get the mask displayed but not yet applied as a MatrxWorkspace
   boost::shared_ptr<Mantid::API::MatrixWorkspace>
   getMaskMatrixWorkspace() const;

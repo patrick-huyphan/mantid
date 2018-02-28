@@ -733,7 +733,8 @@ void InstrumentActor::doDraw(bool picking) const {
       continue;
 
     if (compInfo.hasValidShape(i)) {
-      for (size_t j = 0; j < compInfo.scanCount(i); ++j) {
+      //for (size_t j = 0; j < compInfo.scanCount(i); ++j) {
+      for (size_t j = 0; j < 1; ++j) {
         if (m_isCompVisible[i]) {
           if (picking)
             m_pickColors[i].paint();
@@ -1354,7 +1355,7 @@ const Mantid::Geometry::DetectorInfo &InstrumentActor::detectorInfo() const {
     return getWorkspace()->detectorInfo();
 }
 
-const size_t InstrumentActor::timeIndex() const { return m_timeIndex; }
+size_t InstrumentActor::timeIndex() const { return m_timeIndex; }
 
 void InstrumentActor::invalidateDisplayLists() const {
   for (size_t i = 0; i < 2; ++i) {
