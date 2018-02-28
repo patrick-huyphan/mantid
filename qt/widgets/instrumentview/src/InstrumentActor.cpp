@@ -732,10 +732,8 @@ void InstrumentActor::doDraw(bool picking) const {
         compInfo.componentType(i) == Beamline::ComponentType::OutlineComposite)
       continue;
 
-    if (compInfo.hasValidShape(i)) {
-      //for (size_t j = 0; j < compInfo.scanCount(i); ++j) {
-      for (size_t j = 0; j < 1; ++j) {
-        if (m_isCompVisible[i]) {
+    if (compInfo.hasValidShape(i) && m_isCompVisible[i]) {
+      for (size_t j = 0; j < compInfo.scanCount(i); ++j) {
           if (picking)
             m_pickColors[i].paint();
           else
@@ -761,7 +759,6 @@ void InstrumentActor::doDraw(bool picking) const {
 
           compInfo.shape(i).draw();
           glPopMatrix();
-        }
       }
     }
   }
