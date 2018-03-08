@@ -98,6 +98,22 @@ class DirectILLReductionTest(unittest.TestCase):
         xs = ws.readX(0)
         numpy.testing.assert_almost_equal(xs, numpy.arange(E0, E1 + 0.01, dE))
 
+    def testOutputIsDistribution(self):
+        outWSName = 'outWS'
+        algProperties = {
+            'InputWorkspace': self._TEST_WS_NAME,
+            'OutputWorkspace': outWSName,
+            'OutputSofThetaEnergyWorkspace': 'SofThetaE',
+            'rethrow': True
+        }
+        run_algorithm('DirectILLReduction', **algProperties)
+        self.assertTrue(mtd.doesExist(outWSName))
+        ws = mtd[outWSName]
+        self.assertTrue(ws.isDistribution())
+        self.assertTrue(mtd.doesExist('SofThetaE'))
+        ws = mtd['SofThetaE']
+        self.assertTrue(ws.isDistribution())
+
     def testQRebinning(self):
         outWSName = 'outWS'
         Q0 = 2.3
