@@ -18,8 +18,8 @@ GCC_DIAG_OFF(conversion)
 #include "private/Schema/ba57_run_info_generated.h"
 #include "private/Schema/df12_det_spec_map_generated.h"
 #include "private/Schema/ev42_events_generated.h"
-#include "private/Schema/is84_isis_events_generated.h"
 #include "private/Schema/f142_logdata_generated.h"
+#include "private/Schema/is84_isis_events_generated.h"
 GCC_DIAG_ON(conversion)
 
 using namespace Mantid::Types;
@@ -124,8 +124,6 @@ void KafkaEventStreamDecoder::startCapture(bool startNow) {
   // Get last two messages in run topic to ensure we get a runStart message
   m_runStream =
       m_broker->subscribe({m_runInfoTopic}, SubscribeAtOption::LASTTWO);
-  m_spDetStream =
-      m_broker->subscribe({m_spDetTopic}, SubscribeAtOption::LASTONE);
 
   m_thread = std::thread([this]() { this->captureImpl(); });
   m_thread.detach();
@@ -554,6 +552,28 @@ KafkaEventStreamDecoder::getRunStartMessage(std::string &rawMsgBuffer) {
 }
 
 /**
+ * Get a Spectrum-Detector map message from the stream
+ *
+ * @return std::string containing the message payload
+ */
+std::string KafkaEventStreamDecoder::getSpecDetMapMessage() {
+  std::string rawMsgBuffer;
+  int64_t offset;
+  int32_t partition;
+  std::string topicName;
+
+  auto spDetStream =
+      m_broker->subscribe({m_spDetTopic}, SubscribeAtOption::LASTONE);
+  spDetStream->consumeMessage(&rawMsgBuffer, offset, partition, topicName);
+  if (rawMsgBuffer.empty()) {
+    throw std::runtime_error("KafkaEventStreamDecoder::initLocalCaches() - "
+                             "Empty message received from spectrum-detector "
+                             "topic. Unable to continue");
+  }
+  return rawMsgBuffer;
+}
+
+/**
  * Pull information from the run & detector-spectrum stream and initialize
  * the internal EventWorkspace buffer + other cached information such as run
  * start. This includes loading the instrument.
@@ -561,27 +581,18 @@ KafkaEventStreamDecoder::getRunStartMessage(std::string &rawMsgBuffer) {
  * events
  */
 void KafkaEventStreamDecoder::initLocalCaches() {
-  std::string rawMsgBuffer;
+  auto specDetMapMessageBuffer = getSpecDetMapMessage();
 
-  // Load spectra-detector mapping from stream
-  int64_t offset;
-  int32_t partition;
-  std::string topicName;
-  m_spDetStream->consumeMessage(&rawMsgBuffer, offset, partition, topicName);
-  if (rawMsgBuffer.empty()) {
-    throw std::runtime_error("KafkaEventStreamDecoder::initLocalCaches() - "
-                             "Empty message received from spectrum-detector "
-                             "topic. Unable to continue");
-  }
   auto spDetMsg = GetSpectraDetectorMapping(
-      reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
+      reinterpret_cast<const uint8_t *>(specDetMapMessageBuffer.c_str()));
   auto nspec = spDetMsg->spectrum()->size();
   auto nudet = spDetMsg->detector_id()->size();
   if (nudet != nspec) {
     std::ostringstream os;
     os << "KafkaEventStreamDecoder::initLocalEventBuffer() - Invalid "
           "spectra/detector mapping. Expected matched length arrays but "
-          "found nspec=" << nspec << ", ndet=" << nudet;
+          "found nspec="
+       << nspec << ", ndet=" << nudet;
     throw std::runtime_error(os.str());
   }
   // Create buffer
@@ -590,6 +601,7 @@ void KafkaEventStreamDecoder::initLocalCaches() {
       spDetMsg->detector_id()->data(), nudet);
 
   // Load run metadata
+  std::string rawMsgBuffer;
   auto runStartData = getRunStartMessage(rawMsgBuffer);
   // Load the instrument if possible but continue if we can't
   auto instName = runStartData.instrumentName;

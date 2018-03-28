@@ -131,8 +131,6 @@ private:
   Types::Core::DateAndTime m_runStart;
   /// Subscriber for the run info stream
   std::unique_ptr<IKafkaStreamSubscriber> m_runStream;
-  /// Subscriber for the run info stream
-  std::unique_ptr<IKafkaStreamSubscriber> m_spDetStream;
   /// Run number
   int m_runNumber;
 
@@ -172,6 +170,9 @@ private:
   void checkIfAllStopOffsetsReached(
       const std::unordered_map<std::string, std::vector<bool>> &reachedEnd,
       bool &checkOffsets);
+
+  /// Get a Spectrum-Detector map message from the stream
+  std::string getSpecDetMapMessage();
 
   // Callbacks
   CallbackFn m_cbIterationEnd;
