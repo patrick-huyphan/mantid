@@ -102,9 +102,6 @@ void KafkaEventStreamDecoder::startCapture(bool startNow) {
 
   // If we are not starting now, then we want to start at the start of the run
   if (!startNow) {
-    // Get last two messages in run topic to ensure we get a runStart message
-    m_runStream =
-        m_broker->subscribe({m_runInfoTopic}, SubscribeAtOption::LASTTWO);
     std::string rawMsgBuffer;
     auto runStartData = getRunStartMessage(rawMsgBuffer);
     auto startTimeMilliseconds =
@@ -120,10 +117,6 @@ void KafkaEventStreamDecoder::startCapture(bool startNow) {
         m_broker->subscribe({m_eventTopic, m_runInfoTopic, m_sampleEnvTopic},
                             SubscribeAtOption::LATEST);
   }
-
-  // Get last two messages in run topic to ensure we get a runStart message
-  m_runStream =
-      m_broker->subscribe({m_runInfoTopic}, SubscribeAtOption::LASTTWO);
 
   m_thread = std::thread([this]() { this->captureImpl(); });
   m_thread.detach();
@@ -529,12 +522,16 @@ void KafkaEventStreamDecoder::eventDataFromMessage(const std::string &buffer) {
 
 KafkaEventStreamDecoder::RunStartStruct
 KafkaEventStreamDecoder::getRunStartMessage(std::string &rawMsgBuffer) {
-  auto offset = getRunInfoMessage(rawMsgBuffer);
+  // Get last two messages in run topic to ensure we get a runStart message
+  auto runStream =
+      m_broker->subscribe({m_runInfoTopic}, SubscribeAtOption::LASTTWO);
+
+  auto offset = getRunInfoMessage(rawMsgBuffer, runStream);
   auto runMsg =
       GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
   if (runMsg->info_type_type() != InfoTypes_RunStart) {
     // We want a runStart message, try the next one
-    offset = getRunInfoMessage(rawMsgBuffer);
+    offset = getRunInfoMessage(rawMsgBuffer, runStream);
     runMsg =
         GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
     if (runMsg->info_type_type() != InfoTypes_RunStart) {
@@ -648,11 +645,13 @@ void KafkaEventStreamDecoder::initLocalCaches() {
  * Try to get a runInfo message from Kafka, throw error if it fails
  * @param rawMsgBuffer : string to use as message buffer
  */
-int64_t KafkaEventStreamDecoder::getRunInfoMessage(std::string &rawMsgBuffer) {
+int64_t KafkaEventStreamDecoder::getRunInfoMessage(
+    std::string &rawMsgBuffer,
+    std::unique_ptr<IKafkaStreamSubscriber> &runStream) {
   int64_t offset;
   int32_t partition;
   std::string topicName;
-  m_runStream->consumeMessage(&rawMsgBuffer, offset, partition, topicName);
+  runStream->consumeMessage(&rawMsgBuffer, offset, partition, topicName);
   if (rawMsgBuffer.empty()) {
     throw std::runtime_error("KafkaEventStreamDecoder::getRunInfoMessage() - "
                              "Empty message received from run info "

@@ -104,7 +104,8 @@ private:
   createBufferWorkspace(const DataObjects::EventWorkspace_sptr &parent);
   void loadInstrument(const std::string &name,
                       DataObjects::EventWorkspace_sptr workspace);
-  int64_t getRunInfoMessage(std::string &rawMsgBuffer);
+  int64_t getRunInfoMessage(std::string &rawMsgBuffer,
+                            std::unique_ptr<IKafkaStreamSubscriber> &runStream);
   RunStartStruct getRunStartMessage(std::string &rawMsgBuffer);
 
   void eventDataFromMessage(const std::string &buffer);
@@ -129,8 +130,6 @@ private:
   spec2index_map m_specToIdx;
   /// Start time of the run
   Types::Core::DateAndTime m_runStart;
-  /// Subscriber for the run info stream
-  std::unique_ptr<IKafkaStreamSubscriber> m_runStream;
   /// Run number
   int m_runNumber;
 
