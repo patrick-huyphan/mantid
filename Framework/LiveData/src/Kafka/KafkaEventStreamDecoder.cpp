@@ -129,6 +129,10 @@ void KafkaEventStreamDecoder::startCapture(bool startNow) {
 void KafkaEventStreamDecoder::stopCapture() noexcept {
   // This will interrupt the "event" loop
   m_interrupt = true;
+
+  // Stop now, even if we reached end of run don't wait for data to be extracted
+  m_endRun = false;
+
   // Wait until the function has completed. The background thread
   // will exit automatically
   while (m_capturing) {
@@ -253,10 +257,15 @@ void KafkaEventStreamDecoder::captureImplExcept() {
   bool checkOffsets = false;
 
   while (!m_interrupt) {
-    if (m_endRun)
+    if (m_endRun) {
+      std::cout << "waiting runend observation" << std::endl;
       waitForRunEndObservation();
-    else
+      std::cout << "stopped waiting runend observation" << std::endl;
+    } else {
+      std::cout << "waiting data extract observation" << std::endl;
       waitForDataExtraction();
+      std::cout << "stopped waiting data extract observation" << std::endl;
+    }
     // Pull in events
     m_eventStream->consumeMessage(&buffer, offset, partition, topicName);
     // No events, wait for some to come along...
