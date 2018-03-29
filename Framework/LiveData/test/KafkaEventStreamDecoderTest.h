@@ -63,8 +63,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeISISEventSubscriber(1)))
-        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)))
-        .WillOnce(Return(new FakeISISSpDetStreamSubscriber));
+        .WillOnce(Return(new FakeISISSpDetStreamSubscriber))
+        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)));
     auto decoder = createTestDecoder(mockBroker);
     TSM_ASSERT("Decoder should not have create data buffers yet",
                !decoder->hasData());
@@ -102,8 +102,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeISISEventSubscriber(2)))
-        .WillOnce(Return(new FakeRunInfoStreamSubscriber(2)))
-        .WillOnce(Return(new FakeISISSpDetStreamSubscriber));
+        .WillOnce(Return(new FakeISISSpDetStreamSubscriber))
+        .WillOnce(Return(new FakeRunInfoStreamSubscriber(2)));
     auto decoder = createTestDecoder(mockBroker);
     // Need 2 full loops to get both periods
     startCapturing(*decoder, 2);
@@ -143,8 +143,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeDataStreamSubscriber(1)))
-        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)))
-        .WillOnce(Return(new FakeISISSpDetStreamSubscriber));
+        .WillOnce(Return(new FakeISISSpDetStreamSubscriber))
+        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)));
     auto decoder = createTestDecoder(mockBroker);
     TSM_ASSERT("Decoder should not have create data buffers yet",
                !decoder->hasData());
@@ -182,8 +182,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeDataStreamSubscriber(3)))
-        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)))
-        .WillOnce(Return(new FakeISISSpDetStreamSubscriber));
+        .WillOnce(Return(new FakeISISSpDetStreamSubscriber))
+        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)));
     auto decoder = createTestDecoder(mockBroker);
     TSM_ASSERT("Decoder should not have create data buffers yet",
                !decoder->hasData());
@@ -220,8 +220,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeSampleEnvironmentSubscriber))
-        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)))
-        .WillOnce(Return(new FakeISISSpDetStreamSubscriber));
+        .WillOnce(Return(new FakeISISSpDetStreamSubscriber))
+        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)));
     auto decoder = createTestDecoder(mockBroker);
     TSM_ASSERT("Decoder should not have create data buffers yet",
                !decoder->hasData());
@@ -250,8 +250,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeEmptyStreamSubscriber))
-        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)))
-        .WillOnce(Return(new FakeISISSpDetStreamSubscriber));
+        .WillOnce(Return(new FakeISISSpDetStreamSubscriber))
+        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)));
     auto decoder = createTestDecoder(mockBroker);
     startCapturing(*decoder, 1);
 
@@ -289,8 +289,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeISISEventSubscriber(1)))
-        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)))
-        .WillOnce(Return(new FakeEmptyStreamSubscriber));
+        .WillOnce(Return(new FakeEmptyStreamSubscriber))
+        .WillOnce(Return(new FakeRunInfoStreamSubscriber(1)));
     auto decoder = createTestDecoder(mockBroker);
     startCapturing(*decoder, 1);
 
@@ -307,8 +307,8 @@ public:
     EXPECT_CALL(*mockBroker, subscribe_(_, _))
         .Times(Exactly(3))
         .WillOnce(Return(new FakeISISEventSubscriber(1)))
-        .WillOnce(Return(new FakeEmptyStreamSubscriber))
-        .WillOnce(Return(new FakeISISSpDetStreamSubscriber));
+        .WillOnce(Return(new FakeISISSpDetStreamSubscriber))
+        .WillOnce(Return(new FakeEmptyStreamSubscriber));
     auto decoder = createTestDecoder(mockBroker);
     startCapturing(*decoder, 1);
     TS_ASSERT_THROWS(decoder->extractData(), std::runtime_error);
