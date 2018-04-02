@@ -10,11 +10,10 @@
 #include "MantidCurveFitting/CostFunctions/CostFuncFitting.h"
 #include "MantidCurveFitting/Functions/ChebfunBase.h"
 #include "MantidKernel/ListValidator.h"
-#include "MantidKernel/MersenneTwister.h"
-#include "MantidKernel/NormalDistribution.h"
 
 #include <map>
 #include <numeric>
+#include <random>
 
 namespace Mantid {
 namespace CurveFitting {
@@ -153,10 +152,9 @@ runMonteCarlo(CostFunctions::CostFuncFitting &costFunction,
               const std::vector<std::pair<double, double>> &ranges,
               const std::vector<std::unique_ptr<IConstraint>> &constraints,
               const size_t nSamples, const size_t nOutput, const size_t seed) {
-
-  Kernel::MersenneTwister randGenerator;
+  std::mt19937 rng;
   if (seed != 0) {
-    randGenerator.setSeed(seed);
+    rng.seed(seed);
   }
   double value = costFunction.val() + getConstraints(constraints);
   auto nParams = costFunction.nParams();
@@ -169,8 +167,8 @@ runMonteCarlo(CostFunctions::CostFuncFitting &costFunction,
   for (size_t it = 0; it < nSamples; ++it) {
     for (size_t i = 0; i < nParams; ++i) {
       const auto &range = ranges[i];
-      auto p = randGenerator.nextValue(range.first, range.second);
-      costFunction.setParameter(i, p);
+      costFunction.setParameter(
+          i, std::uniform_real_distribution<>(range.first, range.second)(rng));
     }
     costFunction.applyTies();
     if (getConstraints(constraints) > 0.0) {
@@ -229,9 +227,9 @@ void runCrossEntropy(
   }
 
   auto nParams = costFunction.nParams();
-  Kernel::NormalDistribution distribution;
+  std::mt19937 rng;
   if (seed != 0) {
-    distribution.setSeed(seed);
+    rng.seed(seed);
   }
   // Sets of function parameters (GSLVector) and corresponding values of the
   // cost function (double)
@@ -251,10 +249,8 @@ void runCrossEntropy(
         paramSet.second.resize(nParams);
       }
       for (size_t i = 0; i < nParams; ++i) {
-        auto mean = distributionParams[i].first;
-        auto sigma = distributionParams[i].second;
-        auto p = distribution.randomValue(mean, sigma);
-        paramSet.second[i] = p;
+        paramSet.second[i] = std::normal_distribution<>(
+            distributionParams[i].first, distributionParams[i].second)(rng);
       }
       // Calculate the cost function with those parameters
       costFunction.setParameters(paramSet.second);

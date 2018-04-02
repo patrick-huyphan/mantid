@@ -12,8 +12,6 @@
 #include <Poco/ActiveResult.h>
 #include <Poco/Thread.h>
 
-#include <boost/random/uniform_int.hpp>
-
 #include <numeric>
 
 namespace Mantid {

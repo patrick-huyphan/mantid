@@ -55,8 +55,9 @@ double NormalDistribution::nextValue() {
 /// @param argMean :: A mean of the distribution.
 /// @param argSigma :: A sigma of the distribution.
 double NormalDistribution::randomValue(double argMean, double argSigma) {
-  boost::normal_distribution<double>::param_type param(argMean, argSigma);
-  return m_generator(m_uniform_generator, param);
+  return m_generator(
+      m_uniform_generator,
+      std::normal_distribution<double>::param_type(argMean, argSigma));
 }
 }
 }

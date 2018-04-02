@@ -7,8 +7,6 @@
 #include "MantidKernel/DllConfig.h"
 #include "MantidKernel/MersenneTwister.h"
 
-#include <boost/random/normal_distribution.hpp>
-
 namespace Mantid {
 namespace Kernel {
 
@@ -59,7 +57,7 @@ public:
   /// Get the mean of the distribution
   double mean() const { return m_generator.mean(); }
   /// Get the sigma of the distribution
-  double sigma() const { return m_generator.sigma(); }
+  double sigma() const { return m_generator.stddev(); }
   /// Generate a random number from a distribution with given mean and sigma
   double randomValue(double argMean, double argSigma);
 
@@ -70,7 +68,7 @@ private:
   /// with an implementation of choise)
   MersenneTwister m_uniform_generator;
   /// The boost normal distribution generator
-  boost::normal_distribution<double> m_generator;
+  std::normal_distribution<double> m_generator;
 };
 }
 }
