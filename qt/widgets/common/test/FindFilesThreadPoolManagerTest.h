@@ -26,10 +26,6 @@ public:
   }
 
   void test_find_single_file() {
-    int argc = 1;
-    char name[] = "DummyTestingApplication";
-    char *argv = name;
-    QApplication app(argc, &argv);
     // Arrange
     FakeMWRunFiles *widget = new FakeMWRunFiles();
 
@@ -69,10 +65,6 @@ public:
   }
 
   void test_starting_new_search_cancels_currently_running_search() {
-    int argc = 1;
-    char name[] = "DummyTestingApplication";
-    char *argv = name;
-    QApplication app(argc, &argv);
     // Arrange
     FakeMWRunFiles widget;
 
