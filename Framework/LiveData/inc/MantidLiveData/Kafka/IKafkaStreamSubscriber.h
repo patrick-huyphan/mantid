@@ -56,6 +56,8 @@ public:
                     int64_t offset) = 0;
   virtual std::unordered_map<std::string, std::vector<int64_t>>
   getCurrentOffsets() = 0;
+  virtual int64_t getCurrentOffset(const std::string &topic, int partition) = 0;
+  virtual void seekToTime(int64_t time) = 0;
 };
 
 } // namespace LiveData

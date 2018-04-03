@@ -109,13 +109,16 @@ void KafkaEventStreamDecoder::startCapture(bool startNow) {
     m_eventStream = m_broker->subscribe(
         {m_eventTopic, m_runInfoTopic, m_sampleEnvTopic},
         static_cast<int64_t>(startTimeMilliseconds), SubscribeAtOption::TIME);
-    // make sure we listen to the run start topic starting from the run start
+    m_lastProcessedRunStartMessageOffset = runStartData.runStartMsgOffset;
+    // Ensure we listen to the run start topic starting from the run start
     // message we already got the start time from
     m_eventStream->seek(m_runInfoTopic, 0, runStartData.runStartMsgOffset);
   } else {
     m_eventStream =
         m_broker->subscribe({m_eventTopic, m_runInfoTopic, m_sampleEnvTopic},
                             SubscribeAtOption::LATEST);
+    m_lastProcessedRunStartMessageOffset =
+      m_eventStream->getCurrentOffset(m_runInfoTopic, 0);
   }
 
   m_thread = std::thread([this]() { this->captureImpl(); });
@@ -217,6 +220,33 @@ API::Workspace_sptr KafkaEventStreamDecoder::extractDataImpl() {
 }
 
 /**
+ * Seeks to the start of the next run on all partitions subscribed to by m_eventStream
+ * Blocks until a run start message is received or m_interrupt is true
+ */
+void KafkaEventStreamDecoder::seekToStartOfNextRun() {
+  g_log.information("Seeking start of next run");
+
+  std::string rawMsgBuffer;
+  auto runStream =
+    m_broker->subscribe({m_runInfoTopic}, m_lastProcessedRunStartMessageOffset, SubscribeAtOption::OFFSET);
+  while (!m_interrupt) {
+    rawMsgBuffer.clear();
+
+    auto offset = getRunInfoMessage(rawMsgBuffer, runStream);
+    auto runMsg =
+      GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
+    if (runMsg->info_type_type() == InfoTypes_RunStart) {
+      m_lastProcessedRunStartMessageOffset = offset;
+      auto runStartData = static_cast<const RunStart *>(runMsg->info_type());
+      auto startTimeMilliseconds =
+        runStartData->start_time() / 1000000; // nanoseconds to milliseconds
+      m_eventStream->seekToTime(startTimeMilliseconds);
+      break;
+    }
+  }
+}
+
+/**
  * Start decoding data from the streams into the internal buffers.
  * Implementation designed to be entry point for new thread of execution.
  * It catches all thrown exceptions.
@@ -231,7 +261,7 @@ void KafkaEventStreamDecoder::captureImpl() noexcept {
   } catch (...) {
     m_cbError();
     m_exception = boost::make_shared<std::runtime_error>(
-        "KafkaEventStreamDecoder: Unknown exception type caught.");
+      "KafkaEventStreamDecoder: Unknown exception type caught.");
   }
   m_capturing = false;
 }
@@ -258,13 +288,17 @@ void KafkaEventStreamDecoder::captureImplExcept() {
 
   while (!m_interrupt) {
     if (m_endRun) {
-      std::cout << "waiting runend observation" << std::endl;
       waitForRunEndObservation();
-      std::cout << "stopped waiting runend observation" << std::endl;
+
+      // If MonitorLiveData does not interrupt then we should capture next run
+      if (!m_interrupt) {// TODO test for stop behaviour (get from parent algorithm when PR #22229 is merged), not interrupt?
+        stopOffsets.clear();
+        reachedEnd.clear();
+        checkOffsets = false;
+        seekToStartOfNextRun();
+      }
     } else {
-      std::cout << "waiting data extract observation" << std::endl;
       waitForDataExtraction();
-      std::cout << "stopped waiting data extract observation" << std::endl;
     }
     // Pull in events
     m_eventStream->consumeMessage(&buffer, offset, partition, topicName);
@@ -313,7 +347,7 @@ void KafkaEventStreamDecoder::captureImplExcept() {
                  SAMPLE_MESSAGE_ID.c_str())) {
       sampleDataFromMessage(buffer);
     }
-    // Check if we have a runMessage
+    // Check if we have a run stop message
     else if (flatbuffers::BufferHasIdentifier(
                  reinterpret_cast<const uint8_t *>(buffer.c_str()),
                  RUN_MESSAGE_ID.c_str())) {
@@ -327,12 +361,6 @@ void KafkaEventStreamDecoder::captureImplExcept() {
         stopOffsets = getStopOffsets(stopOffsets, reachedEnd, stopTime);
         checkOffsets = true;
         checkIfAllStopOffsetsReached(reachedEnd, checkOffsets);
-      } else if (runMsg->info_type_type() == InfoTypes_RunStart) {
-        auto runStartMsg = static_cast<const RunStart *>(runMsg->info_type());
-        m_runNumber = runStartMsg->run_number();
-        auto runStartTime =
-            static_cast<time_t>(runStartMsg->start_time() / 1000000000);
-        m_runStart.set_from_time_t(runStartTime);
       }
     }
     m_cbIterationEnd();
@@ -544,8 +572,7 @@ KafkaEventStreamDecoder::getRunStartMessage(std::string &rawMsgBuffer) {
     runMsg =
         GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
     if (runMsg->info_type_type() != InfoTypes_RunStart) {
-      throw std::runtime_error("KafkaEventStreamDecoder::initLocalCaches() - "
-                               "Could not find a run start message"
+      throw std::runtime_error("Could not find a run start message"
                                "in the run info topic. Unable to continue");
     }
   }
@@ -767,5 +794,4 @@ void KafkaEventStreamDecoder::loadInstrument(
   }
 }
 } // namespace LiveData
-
 } // namespace Mantid

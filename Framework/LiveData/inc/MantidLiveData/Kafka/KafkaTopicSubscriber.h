@@ -57,6 +57,8 @@ public:
             int64_t offset) override;
   std::unordered_map<std::string, std::vector<int64_t>>
   getCurrentOffsets() override;
+  int64_t getCurrentOffset(const std::string &topic, int partition) override;
+  void seekToTime(int64_t time) override;
 
   static const std::string EVENT_TOPIC_SUFFIX;
   static const std::string RUN_TOPIC_SUFFIX;
@@ -78,7 +80,8 @@ private:
   void subscribeAtOffset(int64_t offset);
   void checkTopicsExist() const;
   void createConsumer();
-  int64_t getCurrentOffset(const std::string &topic, int partition);
+  std::vector<RdKafka::TopicPartition *>
+  getAllPartitionsWithTimestampOffset(int64_t time);
   std::vector<RdKafka::TopicPartition *> getTopicPartitions();
   std::unique_ptr<RdKafka::Metadata> queryMetadata() const;
 };

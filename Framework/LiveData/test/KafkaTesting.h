@@ -12,8 +12,8 @@ GCC_DIAG_OFF(conversion)
 #include "Kafka/private/Schema/ba57_run_info_generated.h"
 #include "Kafka/private/Schema/df12_det_spec_map_generated.h"
 #include "Kafka/private/Schema/ev42_events_generated.h"
-#include "Kafka/private/Schema/is84_isis_events_generated.h"
 #include "Kafka/private/Schema/f142_logdata_generated.h"
+#include "Kafka/private/Schema/is84_isis_events_generated.h"
 GCC_DIAG_ON(conversion)
 
 #include <ctime>
@@ -86,6 +86,12 @@ public:
     UNUSED_ARG(partition);
     UNUSED_ARG(offset);
   }
+  int64_t getCurrentOffset(const std::string &topic, int partition) override {
+    UNUSED_ARG(topic);
+    UNUSED_ARG(partition);
+    return 0;
+  }                                                            // unused
+  void seekToTime(int64_t time) override { UNUSED_ARG(time); } // unused
 };
 
 // -----------------------------------------------------------------------------
@@ -120,6 +126,12 @@ public:
     UNUSED_ARG(partition);
     UNUSED_ARG(offset);
   }
+  int64_t getCurrentOffset(const std::string &topic, int partition) override {
+    UNUSED_ARG(topic);
+    UNUSED_ARG(partition);
+    return 0;
+  }                                                            // unused
+  void seekToTime(int64_t time) override { UNUSED_ARG(time); } // unused
 };
 
 void fakeReceiveAnEventMessage(std::string *buffer, int32_t nextPeriod) {
@@ -135,7 +147,8 @@ void fakeReceiveAnEventMessage(std::string *buffer, int32_t nextPeriod) {
       builder.CreateVector(tof), builder.CreateVector(spec),
       FacilityData_ISISData,
       CreateISISData(builder, static_cast<uint32_t>(nextPeriod),
-                     RunState_RUNNING, protonCharge).Union());
+                     RunState_RUNNING, protonCharge)
+          .Union());
   FinishEventMessageBuffer(builder, messageFlatbuf);
 
   // Copy to provided buffer
@@ -166,10 +179,11 @@ void fakeReceiveARunStartMessage(std::string *buffer, int32_t runNumber,
       static_cast<uint64_t>(mantidTime.to_time_t() * 1000000000);
 
   flatbuffers::FlatBufferBuilder builder;
-  auto runInfo = CreateRunInfo(
-      builder, InfoTypes_RunStart,
-      CreateRunStart(builder, startTimestamp, runNumber,
-                     builder.CreateString(instName), nPeriods).Union());
+  auto runInfo =
+      CreateRunInfo(builder, InfoTypes_RunStart,
+                    CreateRunStart(builder, startTimestamp, runNumber,
+                                   builder.CreateString(instName), nPeriods)
+                        .Union());
   FinishRunInfoBuffer(builder, runInfo);
   // Copy to provided buffer
   buffer->assign(reinterpret_cast<const char *>(builder.GetBufferPointer()),
@@ -230,6 +244,12 @@ public:
     UNUSED_ARG(partition);
     UNUSED_ARG(offset);
   }
+  int64_t getCurrentOffset(const std::string &topic, int partition) override {
+    UNUSED_ARG(topic);
+    UNUSED_ARG(partition);
+    return 0;
+  }                                                            // unused
+  void seekToTime(int64_t time) override { UNUSED_ARG(time); } // unused
 
 private:
   const int32_t m_nperiods;
@@ -271,6 +291,12 @@ public:
     UNUSED_ARG(partition);
     UNUSED_ARG(offset);
   }
+  int64_t getCurrentOffset(const std::string &topic, int partition) override {
+    UNUSED_ARG(topic);
+    UNUSED_ARG(partition);
+    return 0;
+  }                                                            // unused
+  void seekToTime(int64_t time) override { UNUSED_ARG(time); } // unused
 };
 
 // -----------------------------------------------------------------------------
@@ -311,6 +337,12 @@ public:
     UNUSED_ARG(partition);
     UNUSED_ARG(offset);
   }
+  int64_t getCurrentOffset(const std::string &topic, int partition) override {
+    UNUSED_ARG(topic);
+    UNUSED_ARG(partition);
+    return 0;
+  }                                                            // unused
+  void seekToTime(int64_t time) override { UNUSED_ARG(time); } // unused
 
 private:
   std::string m_startTime = "2016-08-31T12:07:42";
@@ -380,6 +412,12 @@ public:
     UNUSED_ARG(partition);
     UNUSED_ARG(offset);
   }
+  int64_t getCurrentOffset(const std::string &topic, int partition) override {
+    UNUSED_ARG(topic);
+    UNUSED_ARG(partition);
+    return 0;
+  }                                                            // unused
+  void seekToTime(int64_t time) override { UNUSED_ARG(time); } // unused
 
 private:
   const std::string m_topicName = "topic_name";
@@ -435,6 +473,12 @@ public:
     UNUSED_ARG(partition);
     UNUSED_ARG(offset);
   }
+  int64_t getCurrentOffset(const std::string &topic, int partition) override {
+    UNUSED_ARG(topic);
+    UNUSED_ARG(partition);
+    return 0;
+  }                                                            // unused
+  void seekToTime(int64_t time) override { UNUSED_ARG(time); } // unused
 
 private:
   std::vector<int32_t> m_spec = {1, 2, 3, 4, 5};

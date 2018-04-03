@@ -195,6 +195,25 @@ std::unique_ptr<Metadata> KafkaTopicSubscriber::queryMetadata() const {
  * topic
  */
 void KafkaTopicSubscriber::subscribeAtTime(int64_t time) {
+  auto partitions = getAllPartitionsWithTimestampOffset(time);
+
+  auto error = m_consumer->assign(partitions);
+
+  // Clean up topicPartition pointers
+  std::for_each(partitions.cbegin(), partitions.cend(),
+                [](RdKafka::TopicPartition *partition) { delete partition; });
+  reportSuccessOrFailure(error, 0);
+}
+
+/**
+ * Get a list of all assign topic partitions with the offset set to a specified
+ * time
+ *
+ * @param time (milliseconds since 1 Jan 1970) to set offsets to
+ * @return list of topic partitions
+ */
+std::vector<RdKafka::TopicPartition *>
+KafkaTopicSubscriber::getAllPartitionsWithTimestampOffset(int64_t time) {
   auto partitions = getTopicPartitions();
   std::for_each(partitions.cbegin(), partitions.cend(),
                 [time](RdKafka::TopicPartition *partition) {
@@ -207,7 +226,6 @@ void KafkaTopicSubscriber::subscribeAtTime(int64_t time) {
     throw std::runtime_error("In KafkaTopicSubscriber failed to lookup "
                              "partition offsets for specified start time.");
   }
-  LOGGER().debug("Called offsetsForTimes");
 
   if (LOGGER().debug()) {
     for (auto partition : partitions) {
@@ -217,21 +235,16 @@ void KafkaTopicSubscriber::subscribeAtTime(int64_t time) {
                        << ", looked up offset as: " << partition->offset()
                        << ", current high watermark is: "
                        << getCurrentOffset(partition->topic(),
-                                           partition->partition()) << std::endl;
+                                           partition->partition())
+                       << std::endl;
     }
   }
-
-  error = m_consumer->assign(partitions);
-
-  // Clean up topicPartition pointers
-  std::for_each(partitions.cbegin(), partitions.cend(),
-                [](RdKafka::TopicPartition *partition) { delete partition; });
-  reportSuccessOrFailure(error, 0);
+  return partitions;
 }
 
 /**
  * Query the broker for the current high watermark offset for a particular topic
- * and partition, useful for debugging
+ * and partition
  * @param topic : topic name
  * @param partition : partition number
  * @return high watermark offset
@@ -271,6 +284,24 @@ void KafkaTopicSubscriber::seek(const std::string &topic, uint32_t partition,
   LOGGER().debug() << "Successful seek of topic: " << topic
                    << ", partition: " << partition << " to offset: " << offset
                    << std::endl;
+}
+
+/**
+ * Seek to given time on all partitions that consumer is subscribed to
+ *
+ * @param time : time (milliseconds since 1 Jan 1970) to seek to
+ */
+void KafkaTopicSubscriber::seekToTime(int64_t time) {
+  auto partitions = getAllPartitionsWithTimestampOffset(time);
+
+  for (auto partition : partitions) {
+    auto error = m_consumer->seek(*partition, CONSUME_TIMEOUT_MS);
+    reportSuccessOrFailure(error, 0);
+  }
+
+  // Clean up topicPartition pointers
+  std::for_each(partitions.cbegin(), partitions.cend(),
+                [](RdKafka::TopicPartition *partition) { delete partition; });
 }
 
 /**

@@ -111,6 +111,8 @@ private:
   void eventDataFromMessage(const std::string &buffer);
   void sampleDataFromMessage(const std::string &buffer);
 
+  void seekToStartOfNextRun();
+
   API::Workspace_sptr extractDataImpl();
 
   /// Broker to use to subscribe to topics
@@ -132,6 +134,7 @@ private:
   Types::Core::DateAndTime m_runStart;
   /// Run number
   int m_runNumber;
+  int64_t m_lastProcessedRunStartMessageOffset;
 
   /// Associated thread running the capture process
   std::thread m_thread;
