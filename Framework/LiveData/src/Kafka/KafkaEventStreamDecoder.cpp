@@ -232,16 +232,21 @@ void KafkaEventStreamDecoder::seekToStartOfNextRun() {
   while (!m_interrupt) {
     rawMsgBuffer.clear();
 
-    auto offset = getRunInfoMessage(rawMsgBuffer, runStream);
-    auto runMsg =
-      GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
-    if (runMsg->info_type_type() == InfoTypes_RunStart) {
-      m_lastProcessedRunStartMessageOffset = offset;
-      auto runStartData = static_cast<const RunStart *>(runMsg->info_type());
-      auto startTimeMilliseconds =
-        runStartData->start_time() / 1000000; // nanoseconds to milliseconds
-      m_eventStream->seekToTime(startTimeMilliseconds);
-      break;
+    int64_t offset;
+    int32_t partition;
+    std::string topicName;
+    runStream->consumeMessage(&rawMsgBuffer, offset, partition, topicName);
+    if (!rawMsgBuffer.empty()) {
+      auto runMsg =
+        GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
+      if (runMsg->info_type_type() == InfoTypes_RunStart) {
+        m_lastProcessedRunStartMessageOffset = offset;
+        auto runStartData = static_cast<const RunStart *>(runMsg->info_type());
+        auto startTimeMilliseconds =
+          runStartData->start_time() / 1000000; // nanoseconds to milliseconds
+        m_eventStream->seekToTime(startTimeMilliseconds);
+        break;
+      }
     }
   }
 }
