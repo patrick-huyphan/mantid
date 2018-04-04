@@ -51,7 +51,8 @@ public:
                           const std::string &eventTopic,
                           const std::string &runInfoTopic,
                           const std::string &spDetTopic,
-                          const std::string &sampleEnvTopic);
+                          const std::string &sampleEnvTopic,
+                          const std::string &runTransitionBehaviour);
   ~KafkaEventStreamDecoder();
   KafkaEventStreamDecoder(const KafkaEventStreamDecoder &) = delete;
   KafkaEventStreamDecoder &operator=(const KafkaEventStreamDecoder &) = delete;
@@ -122,6 +123,9 @@ private:
   const std::string m_runInfoTopic;
   const std::string m_spDetTopic;
   const std::string m_sampleEnvTopic;
+  /// From the StartLiveData RunTransitionBehavior property (Restart, Stop or
+  /// Rename)
+  const std::string m_runTransitionBehaviour;
   /// Flag indicating if user interruption has been requested
   std::atomic<bool> m_interrupt;
   /// Subscriber for the event stream

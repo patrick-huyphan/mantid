@@ -1,7 +1,8 @@
 #include "MantidLiveData/Kafka/KafkaEventListener.h"
+#include "MantidAPI/IAlgorithm.h"
 #include "MantidAPI/LiveListenerFactory.h"
-#include "MantidLiveData/Kafka/KafkaEventStreamDecoder.h"
 #include "MantidLiveData/Kafka/KafkaBroker.h"
+#include "MantidLiveData/Kafka/KafkaEventStreamDecoder.h"
 #include "MantidLiveData/Kafka/KafkaTopicSubscriber.h"
 
 namespace {
@@ -17,6 +18,19 @@ KafkaEventListener::KafkaEventListener() {
   declareProperty("InstrumentName", "");
 }
 
+void KafkaEventListener::setAlgorithm(
+    const Mantid::API::IAlgorithm &callingAlgorithm) {
+  this->updatePropertyValues(callingAlgorithm);
+  // Get the instrument name from StartLiveData so we can sub to correct topics
+  if (callingAlgorithm.existsProperty("RunTransitionBehavior")) {
+    m_runTransitionBehaviour =
+        callingAlgorithm.getPropertyValue("RunTransitionBehavior");
+  } else {
+    g_log.error("KafkaEventListener requires RunTransitionBehavior property to "
+                "be set in calling algorithm");
+  }
+}
+
 /// @copydoc ILiveListener::connect
 bool KafkaEventListener::connect(const Poco::Net::SocketAddress &address) {
   auto broker = std::make_shared<KafkaBroker>(address.toString());
@@ -30,7 +44,8 @@ bool KafkaEventListener::connect(const Poco::Net::SocketAddress &address) {
         sampleEnvTopic(instrumentName +
                        KafkaTopicSubscriber::SAMPLE_ENV_TOPIC_SUFFIX);
     m_decoder = Kernel::make_unique<KafkaEventStreamDecoder>(
-        broker, eventTopic, runInfoTopic, spDetInfoTopic, sampleEnvTopic);
+        broker, eventTopic, runInfoTopic, spDetInfoTopic, sampleEnvTopic,
+        m_runTransitionBehaviour);
   } catch (std::exception &exc) {
     g_log.error() << "KafkaEventListener::connect - Connection Error: "
                   << exc.what() << "\n";
@@ -50,7 +65,8 @@ void KafkaEventListener::start(Types::Core::DateAndTime startTime) {
     startNow = false;
   } else if (startTime != 0) {
     g_log.warning() << "KafkaLiveListener does not currently support starting "
-                       "from arbitrary time." << std::endl;
+                       "from arbitrary time."
+                    << std::endl;
   }
   m_decoder->startCapture(startNow);
 }

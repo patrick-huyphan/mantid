@@ -81,12 +81,14 @@ using Types::Core::DateAndTime;
 KafkaEventStreamDecoder::KafkaEventStreamDecoder(
     std::shared_ptr<IKafkaBroker> broker, const std::string &eventTopic,
     const std::string &runInfoTopic, const std::string &spDetTopic,
-    const std::string &sampleEnvTopic)
+    const std::string &sampleEnvTopic,
+    const std::string &runTransitionBehaviour)
     : m_broker(broker), m_eventTopic(eventTopic), m_runInfoTopic(runInfoTopic),
       m_spDetTopic(spDetTopic), m_sampleEnvTopic(sampleEnvTopic),
-      m_interrupt(false), m_localEvents(), m_specToIdx(), m_runStart(),
-      m_runNumber(-1), m_thread(), m_capturing(false), m_exception(),
-      m_extractWaiting(false), m_cbIterationEnd([] {}), m_cbError([] {}) {}
+      m_runTransitionBehaviour(runTransitionBehaviour), m_interrupt(false),
+      m_localEvents(), m_specToIdx(), m_runStart(), m_runNumber(-1), m_thread(),
+      m_capturing(false), m_exception(), m_extractWaiting(false),
+      m_cbIterationEnd([] {}), m_cbError([] {}) {}
 
 /**
  * Destructor.
@@ -118,7 +120,7 @@ void KafkaEventStreamDecoder::startCapture(bool startNow) {
         m_broker->subscribe({m_eventTopic, m_runInfoTopic, m_sampleEnvTopic},
                             SubscribeAtOption::LATEST);
     m_lastProcessedRunStartMessageOffset =
-      m_eventStream->getCurrentOffset(m_runInfoTopic, 0);
+        m_eventStream->getCurrentOffset(m_runInfoTopic, 0);
   }
 
   m_thread = std::thread([this]() { this->captureImpl(); });
@@ -220,15 +222,17 @@ API::Workspace_sptr KafkaEventStreamDecoder::extractDataImpl() {
 }
 
 /**
- * Seeks to the start of the next run on all partitions subscribed to by m_eventStream
+ * Seeks to the start of the next run on all partitions subscribed to by
+ * m_eventStream
  * Blocks until a run start message is received or m_interrupt is true
  */
 void KafkaEventStreamDecoder::seekToStartOfNextRun() {
   g_log.information("Seeking start of next run");
 
   std::string rawMsgBuffer;
-  auto runStream =
-    m_broker->subscribe({m_runInfoTopic}, m_lastProcessedRunStartMessageOffset, SubscribeAtOption::OFFSET);
+  auto runStream = m_broker->subscribe({m_runInfoTopic},
+                                       m_lastProcessedRunStartMessageOffset,
+                                       SubscribeAtOption::OFFSET);
   while (!m_interrupt) {
     rawMsgBuffer.clear();
 
@@ -238,12 +242,12 @@ void KafkaEventStreamDecoder::seekToStartOfNextRun() {
     runStream->consumeMessage(&rawMsgBuffer, offset, partition, topicName);
     if (!rawMsgBuffer.empty()) {
       auto runMsg =
-        GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
+          GetRunInfo(reinterpret_cast<const uint8_t *>(rawMsgBuffer.c_str()));
       if (runMsg->info_type_type() == InfoTypes_RunStart) {
         m_lastProcessedRunStartMessageOffset = offset;
         auto runStartData = static_cast<const RunStart *>(runMsg->info_type());
         auto startTimeMilliseconds =
-          runStartData->start_time() / 1000000; // nanoseconds to milliseconds
+            runStartData->start_time() / 1000000; // nanoseconds to milliseconds
         m_eventStream->seekToTime(startTimeMilliseconds);
         break;
       }
@@ -266,7 +270,7 @@ void KafkaEventStreamDecoder::captureImpl() noexcept {
   } catch (...) {
     m_cbError();
     m_exception = boost::make_shared<std::runtime_error>(
-      "KafkaEventStreamDecoder: Unknown exception type caught.");
+        "KafkaEventStreamDecoder: Unknown exception type caught.");
   }
   m_capturing = false;
 }
@@ -295,8 +299,9 @@ void KafkaEventStreamDecoder::captureImplExcept() {
     if (m_endRun) {
       waitForRunEndObservation();
 
-      // If MonitorLiveData does not interrupt then we should capture next run
-      if (!m_interrupt) {// TODO test for stop behaviour (get from parent algorithm when PR #22229 is merged), not interrupt?
+      // Seek to start of next run unless the algorithm is to stop after current
+      // run
+      if (m_runTransitionBehaviour != "Stop") {
         stopOffsets.clear();
         reachedEnd.clear();
         checkOffsets = false;

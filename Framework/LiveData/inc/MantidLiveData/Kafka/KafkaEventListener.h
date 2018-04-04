@@ -10,6 +10,11 @@
 //----------------------------------------------------------------------
 
 namespace Mantid {
+
+namespace API {
+class IAlgorithm;
+}
+
 namespace LiveData {
 class KafkaEventStreamDecoder;
 
@@ -61,6 +66,7 @@ public:
   void start(
       Types::Core::DateAndTime startTime = Types::Core::DateAndTime()) override;
   boost::shared_ptr<API::Workspace> extractData() override;
+  void setAlgorithm(const Mantid::API::IAlgorithm &callingAlgorithm) override;
 
   //----------------------------------------------------------------------
   // State flags
@@ -71,6 +77,7 @@ public:
 
 private:
   std::unique_ptr<KafkaEventStreamDecoder> m_decoder = nullptr;
+  std::string m_runTransitionBehaviour;
 };
 
 } // namespace LiveData
