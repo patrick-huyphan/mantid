@@ -457,8 +457,8 @@ bool Algorithm::execute() {
   cacheWorkspaceProperties();
 
   // no logging of input if a child algorithm (except for python child algos)
-  if (!m_isChildAlgorithm || m_alwaysStoreInADS)
-    logAlgorithmInfo();
+  // if (!m_isChildAlgorithm || m_alwaysStoreInADS)
+  logAlgorithmInfo();
 
   // Check all properties for validity
   constexpr bool resetTimer{true};
@@ -779,6 +779,7 @@ void Algorithm::setupAsChildAlgorithm(Algorithm_sptr alg,
                                       const bool enableLogging) {
   // set as a child
   alg->setChild(true);
+  // TODO set communicator (or rely on AlgorithmManager?)
   alg->setLogging(enableLogging);
 
   // Initialise the Child Algorithm
@@ -1661,27 +1662,28 @@ void Algorithm::reportCompleted(const double &duration,
     optionalMessage = ". Processed as a workspace group";
   }
 
-  if (!m_isChildAlgorithm || m_alwaysStoreInADS) {
-    if (m_isAlgStartupLoggingEnabled) {
+  // if (!m_isChildAlgorithm || m_alwaysStoreInADS) {
+  // if (m_isAlgStartupLoggingEnabled) {
 
-      std::stringstream msg;
-      msg << name() << " successful, Duration ";
-      double seconds = duration;
-      if (seconds > 60.) {
-        int minutes = static_cast<int>(seconds / 60.);
-        msg << minutes << " minutes ";
-        seconds = seconds - static_cast<double>(minutes) * 60.;
-      }
-      msg << std::fixed << std::setprecision(2) << seconds << " seconds"
-          << optionalMessage;
-      getLogger().notice(msg.str());
+  std::stringstream msg;
+  msg << name() << " successful, Duration ";
+  double seconds = duration;
+  if (seconds > 60.) {
+    int minutes = static_cast<int>(seconds / 60.);
+    msg << minutes << " minutes ";
+    seconds = seconds - static_cast<double>(minutes) * 60.;
+  }
+  msg << std::fixed << std::setprecision(2) << seconds << " seconds"
+      << optionalMessage;
+  getLogger().notice(msg.str());
+  //}
+  //}
+  /*
+    else {
+      getLogger().debug() << name() << " finished with isChild = " << isChild()
+                          << '\n';
     }
-  }
-
-  else {
-    getLogger().debug() << name() << " finished with isChild = " << isChild()
-                        << '\n';
-  }
+    */
   m_running = false;
 }
 

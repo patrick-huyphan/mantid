@@ -63,7 +63,7 @@ class PG3Analysis(stresstesting.MantidStressTest):
 
         # run the actual code
         SNSPowderReduction(Filename="PG3_4844",
-                           PreserveEvents=True,
+                           PreserveEvents=False,
                            CalibrationFile=self.cal_file,
                            CharacterizationRunsFile=self.char_file,
                            LowResRef=15000, RemovePromptPulseWidth=50,
@@ -80,7 +80,7 @@ class PG3Analysis(stresstesting.MantidStressTest):
         return "ValidateWorkspaceToWorkspace"
 
     def validate(self):
-        self.tolerance = 1.0e-2
+        self.tolerance = 4.0e-1
         return ('PG3_4844','PG3_4844_golden')
 
 

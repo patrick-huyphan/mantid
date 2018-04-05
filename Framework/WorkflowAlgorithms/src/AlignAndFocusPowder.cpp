@@ -662,6 +662,10 @@ void AlignAndFocusPowder::exec() {
   m_progress->report();
 
   // return the output workspace
+  if (m_outputW)
+    g_log.error("have output");
+  else
+    g_log.error("null output");
   setProperty("OutputWorkspace", m_outputW);
 }
 

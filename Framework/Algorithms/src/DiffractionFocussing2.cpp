@@ -1,4 +1,5 @@
 #include "MantidAlgorithms/DiffractionFocussing2.h"
+#include "MantidAPI/AnalysisDataService.h"
 #include "MantidAPI/Axis.h"
 #include "MantidAPI/FileProperty.h"
 #include "MantidAPI/ISpectrum.h"
@@ -14,6 +15,9 @@
 #include "MantidIndexing/Group.h"
 #include "MantidIndexing/IndexInfo.h"
 #include "MantidKernel/VectorHelper.h"
+#include "MantidParallel/Collectives.h"
+#include "MantidParallel/Communicator.h"
+#include "MantidTypes/SpectrumDefinition.h"
 
 #include <cfloat>
 #include <iterator>
@@ -23,7 +27,7 @@ using namespace Mantid::Kernel;
 using namespace Mantid::API;
 using namespace Mantid::DataObjects;
 using std::vector;
-using Mantid::HistogramData::BinEdges;
+using namespace Mantid::HistogramData;
 
 namespace Mantid {
 
@@ -72,6 +76,7 @@ void DiffractionFocussing2::cleanup() {
   std::vector<int>().swap(groupAtWorkspaceIndex);
   group2xvector.clear();
   group2wgtvector.clear();
+  m_groups.clear();
   this->m_validGroups.clear();
   this->m_wsIndices.clear();
 }
@@ -123,11 +128,10 @@ void DiffractionFocussing2::exec() {
   // Fill the map
   progress(0.2, "Determine Rebin Params");
   udet2group.clear();
-  // std::cout << "(1) nGroups " << nGroups << "\n";
   groupWS->makeDetectorIDToGroupVector(udet2group, nGroups);
   if (nGroups <= 0)
     throw std::runtime_error("No groups were specified.");
-  // std::cout << "(2) nGroups " << nGroups << "\n";
+  buildGroupList();
 
   // This finds the rebin parameters (used in both versions)
   // It also initializes the groupAtWorkspaceIndex[] array.
@@ -163,8 +167,19 @@ void DiffractionFocussing2::exec() {
   if (nPoints <= 0) {
     throw std::runtime_error("No points found in the data range.");
   }
-  API::MatrixWorkspace_sptr out = API::WorkspaceFactory::Instance().create(
-      m_matrixInputW, m_validGroups.size(), nPoints + 1, nPoints);
+
+  // Group numbers => spectrum numbers
+  Indexing::IndexInfo indexInfo(m_validGroups,
+                                communicator().rank() == 0
+                                    ? Parallel::StorageMode::MasterOnly
+                                    : Parallel::StorageMode::Cloned,
+                                communicator());
+  // Empty dummy definitions, detector IDs added to spectra below.
+  indexInfo.setSpectrumDefinitions(
+      std::vector<SpectrumDefinition>(m_validGroups.size()));
+  auto out =
+      create<Workspace2D>(*m_matrixInputW, indexInfo, BinEdges(nPoints + 1));
+
   // Caching containers that are either only read from or unused. Initialize
   // them once.
   // Helgrind will show a race-condition but the data is completely unused so it
@@ -189,7 +204,6 @@ void DiffractionFocussing2::exec() {
 
     // This is the output spectrum
     auto &outSpec = out->getSpectrum(outWorkspaceIndex);
-    outSpec.setSpectrumNo(group);
 
     // Get the references to Y and E output and rebin
     // TODO can only be changed once rebin implemented in HistogramData
@@ -202,7 +216,7 @@ void DiffractionFocussing2::exec() {
 
     // loop through the contributing histograms
     const std::vector<size_t> &indices = m_wsIndices[outWorkspaceIndex];
-    const size_t groupSize = indices.size();
+    size_t groupSize = indices.size();
     for (size_t i = 0; i < groupSize; i++) {
       size_t inWorkspaceIndex = indices[i];
       // This is the input spectrum
@@ -283,6 +297,45 @@ void DiffractionFocussing2::exec() {
       prog.report();
     } // end of loop for input spectra
 
+    if (communicator().size() != 1) {
+      // At this point we have a (partial) sum of spectra within each rank.
+      // Send this sum to the master rank do merge all those partial sums.
+      int tag = 0;
+      auto size = static_cast<int>(Yout.size());
+      if (communicator().rank() == 0) {
+        HistogramY y(size);
+        HistogramE e2(size);
+        std::vector<double> weights(size);
+        for (int rank = 1; rank < communicator().size(); ++rank) {
+          communicator().recv(rank, tag, &y[0], size);
+          outSpec.mutableY() += y;
+          communicator().recv(rank, tag, &e2[0], size);
+          outSpec.mutableE() += e2;
+          communicator().recv(rank, tag, &weights[0], size);
+          std::transform(groupWgt.begin(), groupWgt.end(), weights.begin(),
+                         groupWgt.begin(), std::plus<double>());
+          int detCount;
+          communicator().recv(rank, tag, detCount);
+          std::vector<detid_t> detIds(detCount);
+          communicator().recv(rank, tag, detIds.data(), detCount);
+          outSpec.addDetectorIDs(detIds);
+        }
+        std::vector<size_t> groupSizes;
+        Parallel::gather(communicator(), groupSize, groupSizes, 0);
+        groupSize = std::accumulate(groupSizes.begin(), groupSizes.end(), 0);
+      } else {
+        communicator().send(0, tag, &Yout[0], size);
+        communicator().send(0, tag, &Eout[0], size);
+        communicator().send(0, tag, &groupWgt[0], size);
+        Parallel::gather(communicator(), groupSize, 0);
+        const auto detIdSet = outSpec.getDetectorIDs();
+        std::vector<detid_t> detIds(detIdSet.begin(), detIdSet.end());
+        auto size = static_cast<int>(detIds.size());
+        communicator().send(0, tag, size);
+        communicator().send(0, tag, detIds.data(), size);
+      }
+    }
+
     // Calculate the bin widths
     std::vector<double> widths(Xout.size());
     std::adjacent_difference(Xout.begin(), Xout.end(), widths.begin());
@@ -317,7 +370,17 @@ void DiffractionFocussing2::exec() {
   } // end of loop for groups
   PARALLEL_CHECK_INTERUPT_REGION
 
-  setProperty("OutputWorkspace", out);
+  if (communicator().rank() == 0)
+    setProperty("OutputWorkspace", std::move(out));
+  else {
+    // Output has StorageMode::MasterOnly, i.e., it should not exist on
+    // non-master ranks. Remove it from the ADS to deal with the case of
+    // replacing the input workspace.
+    MatrixWorkspace_const_sptr outputWS = getProperty("OutputWorkspace");
+    if (outputWS)
+      AnalysisDataService::Instance().remove(outputWS->getName());
+    setProperty("OutputWorkspace", std::unique_ptr<MatrixWorkspace>(nullptr));
+  }
 
   this->cleanup();
 }
@@ -330,6 +393,8 @@ void DiffractionFocussing2::exec() {
  *  @throw std::runtime_error If the rebinning process fails
  */
 void DiffractionFocussing2::execEvent() {
+  if (communicator().size() != 1)
+    throw std::runtime_error("Preserving events is not supported in MPI runs.");
   // Create a new outputworkspace with not much in it
   auto out = create<EventWorkspace>(*m_matrixInputW, m_validGroups.size(),
                                     m_matrixInputW->binEdges(0));
@@ -537,7 +602,8 @@ void DiffractionFocussing2::determineRebinParameters() {
   group2minmaxmap group2minmax;
   group2minmaxmap::iterator gpit;
 
-  const double BIGGEST = std::numeric_limits<double>::max();
+  constexpr double BIGGEST = std::numeric_limits<double>::max();
+  constexpr auto emptyMinMax = std::make_pair(BIGGEST, -1. * BIGGEST);
 
   // whether or not to bother checking for a mask
   bool checkForMask = false;
@@ -567,8 +633,7 @@ void DiffractionFocussing2::determineRebinParameters() {
 
     // Create the group range in the map if it isn't already there
     if (gpit == group2minmax.end()) {
-      gpit = group2minmax.emplace(group, std::make_pair(BIGGEST, -1. * BIGGEST))
-                 .first;
+      gpit = group2minmax.emplace(group, emptyMinMax).first;
     }
     const double min = (gpit->second).first;
     const double max = (gpit->second).second;
@@ -579,6 +644,33 @@ void DiffractionFocussing2::determineRebinParameters() {
     temp = X.back();
     if (temp > (max)) // New Xmax found
       (gpit->second).second = temp;
+  }
+  if (communicator().size() != 1) {
+    // With multiple MPI ranks we need to global (across all MPI ranks) minimum
+    // and maximum.
+    std::vector<double> min;
+    std::vector<double> max;
+    for (int groupIndex = 0; groupIndex < nGroups; ++groupIndex) {
+      // Typically there should be very few groups so doing this separately
+      // for each group should be sufficiently fast.
+      const auto group = static_cast<int32_t>(m_groups[groupIndex]);
+      auto it = group2minmax.find(group);
+      if (it == group2minmax.end()) {
+        Parallel::all_gather(communicator(), emptyMinMax.first, min);
+        Parallel::all_gather(communicator(), emptyMinMax.second, max);
+        auto minmax = std::make_pair(*std::min_element(min.begin(), min.end()),
+                                     *std::max_element(max.begin(), max.end()));
+        if (minmax != emptyMinMax)
+          group2minmax[group] = minmax;
+      } else {
+        auto &localMin = it->second.first;
+        auto &localMax = it->second.second;
+        Parallel::all_gather(communicator(), localMin, min);
+        Parallel::all_gather(communicator(), localMax, max);
+        localMin = *std::min_element(min.begin(), min.end());
+        localMax = *std::max_element(max.begin(), max.end());
+      }
+    }
   }
 
   nGroups = group2minmax.size(); // Number of unique groups
@@ -661,6 +753,35 @@ size_t DiffractionFocussing2::setupGroupToWSIndices() {
     m_wsIndices.push_back(std::move(wsIndices[static_cast<int>(group)]));
 
   return totalHistProcess;
+}
+
+/// Build a list of all group numbers. The index is equivalent to the output
+/// workspace index if all groups are valid.
+void DiffractionFocussing2::buildGroupList() {
+  // Avoid using std::set since that would make this function O(N log N).
+  // Typically there should be very few groups so using a vector should be
+  // very efficient here.
+  std::vector<bool> exists;
+  for (const auto group : udet2group) {
+    if (group <= 0)
+      continue;
+    if (exists.size() < static_cast<size_t>(group + 1))
+      exists.resize(group + 1, false);
+    exists.at(group) = true;
+  }
+  for (size_t i = 0; i < exists.size(); ++i)
+    if (exists[i])
+      m_groups.push_back(static_cast<int>(i));
+}
+
+Parallel::ExecutionMode DiffractionFocussing2::getParallelExecutionMode(
+    const std::map<std::string, Parallel::StorageMode> &storageModes) const {
+  if (storageModes.count("GroupingWorkspace"))
+    if (storageModes.at("GroupingWorkspace") != Parallel::StorageMode::Cloned)
+      return Parallel::ExecutionMode::Invalid;
+  if (storageModes.at("InputWorkspace") != Parallel::StorageMode::Distributed)
+    return Parallel::ExecutionMode::Invalid;
+  return Parallel::ExecutionMode::Distributed;
 }
 
 } // namespace Algorithm

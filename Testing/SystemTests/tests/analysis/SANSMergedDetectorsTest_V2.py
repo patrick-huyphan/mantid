@@ -29,12 +29,19 @@ class SANSMergedDetectorsTest_V2(stresstesting.MantidStressTest):
         Set1D()
 
         # Assign data
-        AssignSample(r'SANS2D00028797.nxs', reload=True)
-        AssignCan(r'SANS2D00028793.nxs', reload=True)
+        AssignSample(r'/home/simon/mantid/mpi/SANS2D/data/SANS2D00028797-1000x.nxs', reload=True)
+        AssignCan(r'/home/simon/mantid/mpi/SANS2D/data/SANS2D00028793-1000x.nxs', reload=True)
+        #AssignSample(r'SANS2D00028797.nxs', reload=True)
+        #AssignCan(r'SANS2D00028793.nxs', reload=True)
         TransmissionSample(r'SANS2D00028808.nxs', r'SANS2D00028784.nxs')
         TransmissionCan(r'SANS2D00028823.nxs', r'SANS2D00028784.nxs')
 
         # Run the reduction and request FRONT and BACK to be merged
+        WavRangeReduction(combineDet="merged")
+        #try:
+        #    self.cleanup()
+        #except:
+        #    pass
         WavRangeReduction(combineDet="merged")
 
     def validate(self):
@@ -47,4 +54,5 @@ class SANSMergedDetectorsTest_V2(stresstesting.MantidStressTest):
     def cleanup(self):
         # Delete all workspaces
         for ws in mtd.getObjectNames():
+            print(ws)
             DeleteWorkspace(Workspace=ws)

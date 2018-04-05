@@ -95,6 +95,11 @@ public:
     return "Diffraction\\Focussing";
   }
 
+protected:
+  Parallel::ExecutionMode getParallelExecutionMode(
+      const std::map<std::string, Parallel::StorageMode> &storageModes)
+      const override;
+
 private:
   // Overridden Algorithm methods
   void init() override;
@@ -111,6 +116,7 @@ private:
   /// The result is stored in group2params
   void determineRebinParameters();
   int validateSpectrumInGroup(size_t wi);
+  void buildGroupList();
 
   /// Shared pointer to the input workspace
   API::MatrixWorkspace_const_sptr m_matrixInputW;
@@ -140,8 +146,12 @@ private:
   int nPoints = 0;
   /// Mapping of group number to vector of inputworkspace indices.
   std::vector<std::vector<std::size_t>> m_wsIndices;
+  /// List of group numbers
+  std::vector<Indexing::SpectrumNumber> m_groups;
   /// List of valid group numbers
   std::vector<Indexing::SpectrumNumber> m_validGroups;
+  /// Map group to linear group index starting from 0.
+  std::unordered_map<int, size_t> m_groupToIndex;
 };
 
 } // namespace Algorithm

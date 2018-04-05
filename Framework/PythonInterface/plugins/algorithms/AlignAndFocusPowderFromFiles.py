@@ -113,8 +113,8 @@ class AlignAndFocusPowderFromFiles(DistributedDataProcessorAlgorithm):
                     args[name] = prop.value
         return args
 
-    def __updateAlignAndFocusArgs(self, wkspname):
-        self.log().debug('__updateAlignAndFocusArgs(%s)' % wkspname)
+    def __updateAlignAndFocusArgs(self, instr):
+        self.log().debug('__updateAlignAndFocusArgs(%s)' % instr)
         # if the files are missing, there is nothing to do
         if (CAL_FILE not in self.kwargs) and (GROUP_FILE not in self.kwargs):
             self.log().debug('--> Nothing to do')
@@ -128,7 +128,7 @@ class AlignAndFocusPowderFromFiles(DistributedDataProcessorAlgorithm):
             del self.kwargs[GROUP_FILE]
 
         # get the instrument name
-        instr = mtd[wkspname].getInstrument().getName()
+        # TODO non-master
         instr = ConfigService.getInstrument(instr).shortName()
 
         # use the canonical names if they weren't specifed
@@ -218,13 +218,15 @@ class AlignAndFocusPowderFromFiles(DistributedDataProcessorAlgorithm):
                              Target='TOF', EMode='Elastic')
             prog_start += prog_per_chunk_step
 
+            if j == 0:
+                instr = mtd[chunkname].getInstrument().getName()
             AlignAndFocusPowder(InputWorkspace=chunkname, OutputWorkspace=chunkname,
                                 startProgress=prog_start, endProgress=prog_start+2.*prog_per_chunk_step,
                                 **self.kwargs)
             prog_start += 2.*prog_per_chunk_step # AlignAndFocusPowder counts for two steps
 
             if j == 0:
-                self.__updateAlignAndFocusArgs(chunkname)
+                self.__updateAlignAndFocusArgs(instr)
                 RenameWorkspace(InputWorkspace=chunkname, OutputWorkspace=wkspname)
             else:
                 Plus(LHSWorkspace=wkspname, RHSWorkspace=chunkname, OutputWorkspace=wkspname,
@@ -297,10 +299,14 @@ class AlignAndFocusPowderFromFiles(DistributedDataProcessorAlgorithm):
 
         # with more than one chunk or file the integrated proton charge is
         # generically wrong
-        mtd[finalname].run().integrateProtonCharge()
+        try:
+            ws = mtd[finalname]
+            ws.run().integrateProtonCharge()
+        except KeyError:
+            ws = None
 
         # set the output workspace
-        self.setProperty('OutputWorkspace', mtd[finalname])
+        self.setProperty('OutputWorkspace', ws)
 
 
 # Register algorithm with Mantid.

@@ -13,6 +13,9 @@ from mantid.kernel import ConfigService, Direction, FloatArrayProperty, \
 from mantid.dataobjects import SplittersWorkspace  # SplittersWorkspace
 from six.moves import range #pylint: disable=redefined-builtin
 
+from mantid.kernel import mpisetup
+import sys
+
 if AlgorithmFactory.exists('GatherWorkspaces'):
     HAVE_MPI = True
     from mpi4py import MPI
@@ -21,6 +24,12 @@ else:
     HAVE_MPI = False
     mpiRank = 0 # simplify if clauses
 
+mpi = False
+master_rank = True
+if HAVE_MPI is False and 'boost.mpi' in sys.modules:
+    mpi = True
+    if mpisetup.boost.mpi.rank != 0:
+        master_rank = False
 
 EVENT_WORKSPACE_ID = "EventWorkspace"
 EXTENSIONS_NXS = ["_event.nxs", ".nxs.h5"]
@@ -386,26 +395,27 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
 
         for (samRunIndex, sam_ws_name) in enumerate(samwksplist):
             assert isinstance(sam_ws_name, str), 'Assuming that samRun is a string. But it is %s' % str(type(sam_ws_name))
-            if is_event_workspace(sam_ws_name):
-                self.log().information('Sample Run %s:  starting number of events = %d.' % (
-                    sam_ws_name, get_workspace(sam_ws_name).getNumberEvents()))
+            if master_rank:
+                if is_event_workspace(sam_ws_name):
+                    self.log().information('Sample Run %s:  starting number of events = %d.' % (
+                        sam_ws_name, get_workspace(sam_ws_name).getNumberEvents()))
 
             # Get run information
             self._info = self._getinfo(sam_ws_name)
 
             # process the container
-            can_run_numbers = self._info["container"].value
+            can_run_numbers = self._read_info("container")
             can_run_numbers = ['%s_%d' % (self._instrument, value) for value in can_run_numbers]
             can_run_ws_name = self._process_container_runs(can_run_numbers, samRunIndex, preserveEvents)
             if can_run_ws_name is not None:
                 workspacelist.append(can_run_ws_name)
 
             # process the vanadium run
-            van_run_number_list = self._info["vanadium"].value
+            van_run_number_list = self._read_info("vanadium")
             van_run_number_list = ['%s_%d' % (self._instrument, value) for value in van_run_number_list]
             van_specified = not noRunSpecified(van_run_number_list)
             if van_specified:
-                van_run_ws_name = self._process_vanadium_runs(van_run_number_list, samRunIndex)
+                van_run_ws_name = self._process_vanadium_runs(van_run_number_list, samRunIndex, preserveEvents=preserveEvents)
                 workspacelist.append(van_run_ws_name)
             else:
                 van_run_ws_name = None
@@ -413,6 +423,8 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
             # return if MPI is used and there is more than 1 processor
             if mpiRank > 0:
                 return
+            if not master_rank:
+                continue
 
             # return if there is no sample run
             # Note: sample run must exist in logic
@@ -482,7 +494,7 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
         # ENDFOR
 
         # convert everything into d-spacing as the final units
-        if mpiRank == 0:
+        if mpiRank == 0 and master_rank:
             workspacelist = set(workspacelist) # only do each workspace once
             for wksp in workspacelist:
                 api.ConvertUnits(InputWorkspace=wksp, OutputWorkspace=wksp,
@@ -782,7 +794,7 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
         #TODO make sure that this funny function is called
         #self.checkInfoMatch(info, tempinfo)
 
-        if self._normalisebycurrent is True:
+        if self._normalisebycurrent is True and master_rank is True:
             api.NormaliseByCurrent(InputWorkspace=final_name,
                                    OutputWorkspace=final_name,
                                    RecalculatePCharge=True)
@@ -992,7 +1004,13 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
         """
         # Check requirements
         assert isinstance(wksp_name, str)
-        assert self.does_workspace_exist(wksp_name)
+        if master_rank:
+            assert self.does_workspace_exist(wksp_name)
+        else:
+            # In MPI runs (builds with -DMPI_EXPERIMENTAL=ON), workspaces
+            # might just exist on the master rank
+            if not self.does_workspace_exist(wksp_name):
+                return None;
 
         # Reset characterization run numbers in the property manager
         if PropertyManagerDataService.doesExist('__snspowderreduction'):
@@ -1010,6 +1028,22 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
 
         # convert the result into a dict
         return PropertyManagerDataService.retrieve("__snspowderreduction")
+
+    def _read_info(self, key):
+        """ Read entry of self._info that is only available on master rank in an MPI run.
+
+        If self._getinfo is called on a workspaces that has StorageMode::MasterOnly,
+        self._info is only available on the master rank. If all ranks need a resulting
+        parameter it should be read with this function, which does with broadcasting
+        the parameter to all MPI ranks.
+        """
+        if mpi:
+            if master_rank:
+                return mpisetup.boost.mpi.broadcast(mpisetup.boost.mpi.world, self._info[key].value, 0)
+            else:
+                return mpisetup.boost.mpi.broadcast(mpisetup.boost.mpi.world, None, 0)
+        else:
+            return self._info[key].value
 
     def _save(self, wksp, info, normalized, pdfgetn):
         prefix = str(wksp)
@@ -1277,7 +1311,7 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
 
         return can_run_ws_name
 
-    def _process_vanadium_runs(self, van_run_number_list, samRunIndex, **dummy_focuspos):
+    def _process_vanadium_runs(self, van_run_number_list, samRunIndex, preserveEvents=True, **dummy_focuspos):
         """
         Purpose: process vanadium runs
         Requirements: if more than 1 run in given run number list, then samRunIndex must be given.
@@ -1377,6 +1411,7 @@ class SNSPowderReduction(DistributedDataProcessorAlgorithm):
                                     Params=self._binning,
                                     ResampleX=self._resampleX,
                                     Dspacing=self._bin_in_dspace,
+                                    PreserveEvents=preserveEvents,
                                     RemovePromptPulseWidth=self._removePromptPulseWidth,
                                     CompressTolerance=self.COMPRESS_TOL_TOF,
                                     UnwrapRef=self._LRef, LowResRef=self._DIFCref,
