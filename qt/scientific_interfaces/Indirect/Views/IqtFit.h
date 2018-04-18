@@ -1,14 +1,12 @@
 #ifndef MANTIDQTCUSTOMINTERFACESIDA_IQTFIT_H_
 #define MANTIDQTCUSTOMINTERFACESIDA_IQTFIT_H_
 
+#include "IqtFitModel.h"
 #include "IndirectFitAnalysisTab.h"
-#include "IndirectIqtFitModel.h"
 
 #include "MantidAPI/CompositeFunction.h"
 #include "MantidAPI/MatrixWorkspace_fwd.h"
 #include "ui_IqtFit.h"
-
-#include <boost/weak_ptr.hpp>
 
 namespace Mantid {
 namespace API {
@@ -70,7 +68,7 @@ private:
   void updateIntensityTie(const QString &intensityTie);
   std::string fitTypeString() const;
 
-  IndirectIqtFitModel *m_iqtFittingModel;
+  IqtFitModel *m_iqtFittingModel;
   std::unique_ptr<Ui::IqtFit> m_uiForm;
   QString m_tiedParameter;
 };

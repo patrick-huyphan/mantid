@@ -1,7 +1,9 @@
-#include "IndirectIqtFitModel.h"
+#include "IqtFitModel.h"
 
 #include "MantidAPI/AlgorithmManager.h"
 #include "MantidAPI/CompositeFunction.h"
+
+#include <boost/algorithm/string.hpp>
 
 using namespace Mantid::API;
 
@@ -69,13 +71,13 @@ IAlgorithm_sptr IndirectIqtFitModel::simultaneousFitAlgorithm() const {
 std::string IndirectIqtFitModel::sequentialFitOutputName() const {
   if (isMultiFit())
     return "MultiIqtFit_" + m_fitType;
-  return inputDisplayName("%1%_IqtFit_" + m_fitType + "_s%2%", "_to_", 0);
+  return createOutputName("%1%_IqtFit_" + m_fitType + "_s%2%", "_to_", 0);
 }
 
 std::string IndirectIqtFitModel::simultaneousFitOutputName() const {
   if (isMultiFit())
     return "MultiSimultaneousIqtFit_" + m_fitType;
-  return inputDisplayName("%1%_IqtFit_mult" + m_fitType + "_s%2%", "_to_", 0);
+  return createOutputName("%1%_IqtFit_mult" + m_fitType + "_s%2%", "_to_", 0);
 }
 
 void IndirectIqtFitModel::setFitTypeString(const std::string &fitType) {

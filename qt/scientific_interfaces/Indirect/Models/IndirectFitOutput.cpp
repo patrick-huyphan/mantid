@@ -112,11 +112,12 @@ IndirectFitOutput::getParameters(IndirectFitData *fitData,
                 std::unordered_map<std::string, ParameterValue>());
 }
 
-boost::optional<ResultLocation>
-IndirectFitOutput::getResultLocation(IndirectFitData *fitData,
-                                     std::size_t spectra) const {
-  return findOr(m_outputResultLocations, fitData, spectra,
-                boost::optional<ResultLocation>(boost::none));
+Mantid::API::MatrixWorkspace_sptr
+IndirectFitOutput::getResult(IndirectFitData *fitData,
+                             std::size_t spectra) const {
+  return findOr(m_outputResults, fitData, spectra,
+                boost::weak_ptr<MatrixWorkspace>())
+      .lock();
 }
 
 MatrixWorkspace_sptr IndirectFitOutput::getLastResultWorkspace() const {
@@ -167,9 +168,9 @@ void IndirectFitOutput::updateFitResults(
     Mantid::API::WorkspaceGroup_sptr resultGroup,
     const std::vector<std::unique_ptr<IndirectFitData>> &fitData) {
   auto update = [&](IndirectFitData *inputData) {
-    auto &fitResults = m_outputResultLocations[inputData];
+    auto &fitResults = m_outputResults[inputData];
     return [&](std::size_t index, std::size_t spectrum) {
-      fitResults[spectrum] = ResultLocation(resultGroup, index++);
+      fitResults[spectrum] = resultGroup[index++];
     };
   };
   applyEnumeratedData(update, fitData);

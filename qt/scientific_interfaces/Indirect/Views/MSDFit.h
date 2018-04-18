@@ -37,14 +37,6 @@ protected slots:
   void updatePlotOptions() override;
 
 protected:
-  int minimumSpectrum() const override;
-  int maximumSpectrum() const override;
-
-  std::string createSingleFitOutputName() const override;
-  std::string createSequentialFitOutputName() const override;
-  std::string constructBaseName() const;
-  Mantid::API::IAlgorithm_sptr singleFitAlgorithm() const override;
-  Mantid::API::IAlgorithm_sptr sequentialFitAlgorithm() const override;
   void enablePlotResult() override;
   void disablePlotResult() override;
   void enableSaveResult() override;
@@ -57,7 +49,6 @@ protected:
 private:
   void disablePlotGuess() override;
   void enablePlotGuess() override;
-  Mantid::API::IAlgorithm_sptr msdFitAlgorithm(int specMin, int specMax) const;
 
   std::unique_ptr<Ui::MSDFit> m_uiForm;
 };

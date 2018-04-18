@@ -23,11 +23,13 @@ public:
 
   Mantid::API::MatrixWorkspace_sptr getWorkspace(std::size_t index) const;
   const Spectra &getSpectra(std::size_t index) const;
+  const std::pair<double, double> &getRange(std::size_t index,
+                                            std::size_t spectrum) const;
   std::string getExcludeRegion(std::size_t index) const;
   std::vector<std::string>
-  inputDisplayNames(const std::string &formatString,
-                    const std::string &rangeDelimiter) const;
-  std::string inputDisplayName(const std::string &formatString,
+  createDisplayNames(const std::string &formatString,
+                     const std::string &rangeDelimiter) const;
+  std::string createOutputName(const std::string &formatString,
                                const std::string &rangeDelimiter,
                                std::size_t dataIndex) const;
   bool isMultiFit() const;
@@ -67,8 +69,8 @@ public:
   getFitParameters(std::size_t dataIndex, std::size_t spectrum) const;
   virtual std::unordered_map<std::string, ParameterValue>
   getDefaultParameters(std::size_t dataIndex) const;
-  boost::optional<ResultLocation> getResultLocation(std::size_t dataIndex,
-                                                    std::size_t spectrum) const;
+  Mantid::API::MatrixWorkspace_sptr getResult(std::size_t dataIndex,
+                                              std::size_t spectrum) const;
   Mantid::API::MatrixWorkspace_sptr getResultWorkspace() const;
   Mantid::API::WorkspaceGroup_sptr getResultGroup() const;
   Mantid::API::IAlgorithm_sptr getFittingAlgorithm() const;
@@ -89,8 +91,8 @@ private:
   createSequentialFit(Mantid::API::IFunction_sptr function,
                       const std::string &input,
                       IndirectFitData *initialFitData) const;
-  virtual Mantid::API::IAlgorithm_sptr sequentialFitAlgorithm() const = 0;
-  virtual Mantid::API::IAlgorithm_sptr simultaneousFitAlgorithm() const = 0;
+  virtual Mantid::API::IAlgorithm_sptr sequentialFitAlgorithm() const;
+  virtual Mantid::API::IAlgorithm_sptr simultaneousFitAlgorithm() const;
   virtual std::string sequentialFitOutputName() const = 0;
   virtual std::string simultaneousFitOutputName() const = 0;
 

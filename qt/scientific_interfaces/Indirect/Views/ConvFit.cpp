@@ -29,10 +29,10 @@ namespace CustomInterfaces {
 namespace IDA {
 
 ConvFit::ConvFit(QWidget *parent)
-    : IndirectFitAnalysisTab(new IndirectConvFitModel, parent),
+    : IndirectFitAnalysisTab(new ConvFitModel, parent),
       m_uiForm(new Ui::ConvFit), m_confitResFileType() {
   m_uiForm->setupUi(parent);
-  m_convFittingModel = dynamic_cast<IndirectConvFitModel *>(fittingModel());
+  m_convFittingModel = dynamic_cast<ConvFitModel *>(fittingModel());
   setSpectrumSelectionView(m_uiForm->svSpectrumView);
   addPropertyBrowserToUI(m_uiForm.get());
 }

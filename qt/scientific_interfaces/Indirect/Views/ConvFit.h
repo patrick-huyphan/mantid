@@ -1,9 +1,8 @@
 #ifndef MANTIDQTCUSTOMINTERFACESIDA_CONVFIT_H_
 #define MANTIDQTCUSTOMINTERFACESIDA_CONVFIT_H_
 
-#include "IndirectConvFitModel.h"
+#include "ConvFitModel.h"
 #include "IndirectFitAnalysisTab.h"
-#include "IndirectSpectrumSelectionPresenter.h"
 
 #include "MantidAPI/CompositeFunction.h"
 #include "MantidAPI/MatrixWorkspace_fwd.h"
@@ -71,7 +70,7 @@ private:
   // ShortHand Naming for fit functions
   QHash<QString, std::string> m_fitStrings;
   QHash<QString, std::string> m_fitTypeToFunction;
-  IndirectConvFitModel *m_convFittingModel;
+  ConvFitModel *m_convFittingModel;
 };
 
 } // namespace IDA

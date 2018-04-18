@@ -1,4 +1,4 @@
-#include "IndirectConvFitModel.h"
+#include "ConvFitModel.h"
 
 #include "MantidAPI/AlgorithmManager.h"
 #include "MantidAPI/CompositeFunction.h"
@@ -273,38 +273,38 @@ namespace MantidQt {
 namespace CustomInterfaces {
 namespace IDA {
 
-IndirectConvFitModel::IndirectConvFitModel() {}
+ConvFitModel::ConvFitModel() {}
 
-IndirectConvFitModel::~IndirectConvFitModel() {
+ConvFitModel::~ConvFitModel() {
   if (AnalysisDataService::Instance().doesExist("__ConvFit_Resolution"))
     AnalysisDataService::Instance().remove("__ConvFit_Resolution");
 }
 
-IAlgorithm_sptr IndirectConvFitModel::sequentialFitAlgorithm() const {
+IAlgorithm_sptr ConvFitModel::sequentialFitAlgorithm() const {
   return AlgorithmManager::Instance().create("ConvolutionFitSequential");
 }
 
-IAlgorithm_sptr IndirectConvFitModel::simultaneousFitAlgorithm() const {
+IAlgorithm_sptr ConvFitModel::simultaneousFitAlgorithm() const {
   return AlgorithmManager::Instance().create("ConvolutionFitSimultaneous");
 }
 
-std::string IndirectConvFitModel::sequentialFitOutputName() const {
+std::string ConvFitModel::sequentialFitOutputName() const {
   if (isMultiFit())
     return "MultiConvFit_" + m_fitType + m_backgroundString;
-  return inputDisplayName(
+  return createOutputName(
       "%1%_conv_" + m_fitType + m_backgroundString + "_s%2%", "_to_", 0);
 }
 
-std::string IndirectConvFitModel::simultaneousFitOutputName() const {
+std::string ConvFitModel::simultaneousFitOutputName() const {
   return sequentialFitOutputName();
 }
 
 double
-IndirectConvFitModel::getInstrumentResolution(std::size_t dataIndex) const {
+ConvFitModel::getInstrumentResolution(std::size_t dataIndex) const {
   return instrumentResolution(getWorkspace(dataIndex));
 }
 
-std::size_t IndirectConvFitModel::maximumHistograms() const {
+std::size_t ConvFitModel::maximumHistograms() const {
   std::size_t max = getWorkspace(0)->getNumberHistograms();
 
   for (auto i = 1u; i < numberOfWorkspaces(); ++i) {
@@ -314,7 +314,7 @@ std::size_t IndirectConvFitModel::maximumHistograms() const {
   return max;
 }
 
-void IndirectConvFitModel::setFitFunction(IFunction_sptr model,
+void ConvFitModel::setFitFunction(IFunction_sptr model,
                                           IFunction_sptr background) {
   setParameterNameChanges(*model, background != nullptr);
   CompositeFunction_sptr comp(new CompositeFunction);
@@ -347,40 +347,40 @@ void IndirectConvFitModel::setFitFunction(IFunction_sptr model,
   IndirectFittingModel::setFitFunction(comp);
 }
 
-void IndirectConvFitModel::setTemperature(
+void ConvFitModel::setTemperature(
     const boost::optional<double> &temperature) {
   m_temperature = temperature;
 }
 
-void IndirectConvFitModel::addWorkspace(MatrixWorkspace_sptr workspace,
+void ConvFitModel::addWorkspace(MatrixWorkspace_sptr workspace,
                                         const Spectra &spectra) {
   IndirectFittingModel::addWorkspace(workspace, spectra);
   extendResolution();
 }
 
-void IndirectConvFitModel::removeWorkspace(std::size_t index) {
+void ConvFitModel::removeWorkspace(std::size_t index) {
   IndirectFittingModel::removeWorkspace(index);
   extendResolution();
 }
 
-void IndirectConvFitModel::setResolution(
+void ConvFitModel::setResolution(
     Mantid::API::MatrixWorkspace_sptr resolution) {
   m_resolutionWorkspace = resolution;
   extendResolutionWorkspace(resolution, maximumHistograms());
 }
 
-void IndirectConvFitModel::extendResolution() {
+void ConvFitModel::extendResolution() {
   const auto resolutionWorkspace = m_resolutionWorkspace.lock();
   if (resolutionWorkspace)
     extendResolutionWorkspace(resolutionWorkspace, maximumHistograms());
 }
 
-void IndirectConvFitModel::setFitTypeString(const std::string &fitType) {
+void ConvFitModel::setFitTypeString(const std::string &fitType) {
   m_fitType = fitType;
 }
 
 std::unordered_map<std::string, ParameterValue>
-IndirectConvFitModel::getDefaultParameters(std::size_t index) const {
+ConvFitModel::getDefaultParameters(std::size_t index) const {
   std::unordered_map<std::string, ParameterValue> defaultValues;
   defaultValues["PeakCentre"] = 0.0;
   defaultValues["Centre"] = 0.0;
@@ -400,7 +400,7 @@ IndirectConvFitModel::getDefaultParameters(std::size_t index) const {
   return defaultValues;
 }
 
-void IndirectConvFitModel::addSampleLogs() {
+void ConvFitModel::addSampleLogs() {
   AddSampleLogRunner addSampleLog(getResultWorkspace(), getResultGroup());
   addSampleLog("resolution_filename", m_resolutionWorkspace.lock()->getName(),
                "String");
@@ -412,7 +412,7 @@ void IndirectConvFitModel::addSampleLogs() {
   }
 }
 
-IndirectFitOutput IndirectConvFitModel::createFitOutput(
+IndirectFitOutput ConvFitModel::createFitOutput(
     WorkspaceGroup_sptr resultGroup, ITableWorkspace_sptr parameterTable,
     MatrixWorkspace_sptr resultWorkspace,
     const std::vector<std::unique_ptr<IndirectFitData>> &m_fittingData) const {
@@ -420,7 +420,7 @@ IndirectFitOutput IndirectConvFitModel::createFitOutput(
                            m_fittingData, m_parameterNameChanges);
 }
 
-void IndirectConvFitModel::addOutput(
+void ConvFitModel::addOutput(
     IndirectFitOutput *fitOutput, WorkspaceGroup_sptr resultGroup,
     ITableWorkspace_sptr parameterTable, MatrixWorkspace_sptr resultWorkspace,
     const std::vector<std::unique_ptr<IndirectFitData>> &m_fittingData) const {
@@ -428,7 +428,7 @@ void IndirectConvFitModel::addOutput(
                        m_fittingData, m_parameterNameChanges);
 }
 
-void IndirectConvFitModel::setParameterNameChanges(const IFunction &model,
+void ConvFitModel::setParameterNameChanges(const IFunction &model,
                                                    bool backgroundUsed) {
   m_parameterNameChanges = constructParameterNameChanges(
       model, backgroundUsed, m_temperature.is_initialized());

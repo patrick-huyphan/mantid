@@ -21,18 +21,13 @@ struct ParameterValue {
   boost::optional<double> error;
 };
 
-struct ResultLocation {
-  ResultLocation(boost::weak_ptr<WorkspaceGroup> group, std::size_t i)
-      : result(group), index(i) {}
-  boost::weak_ptr<WorkspaceGroup> result;
-  std::size_t index;
-};
-
 using ParameterValues =
     std::unordered_map<std::size_t,
                        std::unordered_map<std::string, ParameterValue>>;
 
-using ResultLocations = std::unordered_map<std::size_t, ResultLocation>;
+using Results =
+    std::unordered_map<std::size_t,
+                       boost::weak_ptr<Mantid::API::MatrixWorkspace>>;
 
 class IndirectFitOutput {
 public:
@@ -52,8 +47,8 @@ public:
   std::unordered_map<std::string, ParameterValue>
   getParameters(IndirectFitData *fitData, std::size_t spectra) const;
 
-  boost::optional<ResultLocation> getResultLocation(IndirectFitData *fitData,
-                                                    std::size_t spectra) const;
+  Mantid::API::MatrixWorkspace_sptr getResult(IndirectFitData *fitData,
+                                              std::size_t spectra) const;
   Mantid::API::MatrixWorkspace_sptr getLastResultWorkspace() const;
   Mantid::API::WorkspaceGroup_sptr getLastResultGroup() const;
 
@@ -80,11 +75,10 @@ private:
       Mantid::API::WorkspaceGroup_sptr resultGroup,
       const std::vector<std::unique_ptr<IndirectFitData>> &fitData);
 
-  boost::weak_ptr<WorkspaceGroup> m_resultGroup;
-  boost::weak_ptr<MatrixWorkspace> m_resultWorkspace;
+  boost::weak_ptr<Mantid::API::WorkspaceGroup> m_resultGroup;
+  boost::weak_ptr<Mantid::API::MatrixWorkspace> m_resultWorkspace;
   std::unordered_map<IndirectFitData *, ParameterValues> m_parameters;
-  std::unordered_map<IndirectFitData *, ResultLocations>
-      m_outputResultLocations;
+  std::unordered_map<std::size_t, Results> m_outputResults;
 };
 
 } // namespace IDA

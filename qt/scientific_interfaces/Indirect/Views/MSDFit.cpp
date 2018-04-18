@@ -69,70 +69,12 @@ void MSDFit::setup() {
           SLOT(updatePlotGuess()));
 }
 
-int MSDFit::minimumSpectrum() const { return m_uiForm->spSpectraMin->value(); }
-
-int MSDFit::maximumSpectrum() const { return m_uiForm->spSpectraMax->value(); }
-
 bool MSDFit::doPlotGuess() const {
   return m_uiForm->ckPlotGuess->isEnabled() &&
          m_uiForm->ckPlotGuess->isChecked();
 }
 
 void MSDFit::singleFit() { executeSingleFit(); }
-
-std::string MSDFit::createSingleFitOutputName() const {
-  return constructBaseName() + std::to_string(selectedSpectrum());
-}
-
-std::string MSDFit::createSequentialFitOutputName() const {
-  const auto specMin = std::to_string(minimumSpectrum());
-  const auto specMax = std::to_string(maximumSpectrum());
-  return constructBaseName() + specMin + "_to_" + specMax;
-}
-
-std::string MSDFit::constructBaseName() const {
-  auto outputName = inputWorkspace()->getName();
-  const auto model = selectedFitType().toStdString();
-
-  const auto cutIndex = outputName.find_last_of('_');
-  if (cutIndex != std::string::npos)
-    outputName = outputName.substr(0, cutIndex);
-  return outputName + "_MSD_" + model + "_s";
-}
-
-IAlgorithm_sptr MSDFit::singleFitAlgorithm() const {
-  const auto fitSpec = m_uiForm->spPlotSpectrum->value();
-  return msdFitAlgorithm(fitSpec, fitSpec);
-}
-
-IAlgorithm_sptr MSDFit::sequentialFitAlgorithm() const {
-  const auto specMin = m_uiForm->spSpectraMin->value();
-  const auto specMax = m_uiForm->spSpectraMax->value();
-  return msdFitAlgorithm(specMin, specMax);
-}
-
-/*
- * Creates an initialized MSDFit Algorithm, using the model with the
- * specified name, to be run from the specified minimum spectrum to
- * the specified maximum spectrum.
- *
- * @param specMin The minimum spectrum to fit.
- * @param specMax The maximum spectrum to fit.
- * @return        An MSDFit Algorithm using the specified model, which
- *                will run across all spectrum between the specified
- *                minimum and maximum.
- */
-IAlgorithm_sptr MSDFit::msdFitAlgorithm(int specMin, int specMax) const {
-  IAlgorithm_sptr msdAlg =
-      AlgorithmManager::Instance().create("QENSFitSequential");
-  msdAlg->initialize();
-  msdAlg->setProperty("SpecMin", specMin);
-  msdAlg->setProperty("SpecMax", specMax);
-  msdAlg->setProperty(
-      "OutputWorkspace",
-      outputWorkspaceName(boost::numeric_cast<size_t>(specMin)) + "_Result");
-  return msdAlg;
-}
 
 bool MSDFit::validate() {
   UserInputValidator uiv;

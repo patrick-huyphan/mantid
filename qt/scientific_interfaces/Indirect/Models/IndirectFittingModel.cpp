@@ -190,21 +190,25 @@ const Spectra &IndirectFittingModel::getSpectra(std::size_t index) const {
   return m_fittingData[index]->spectra();
 }
 
+const std::pair<double, double> &
+IndirectFittingModel::getRange(std::size_t index, std::size_t spectrum) const {
+  return m_fittingData[index]->range(spectrum);
+}
+
 std::string IndirectFittingModel::getExcludeRegion(std::size_t index) const {
   return m_fittingData[index]->excludeRegionString(index);
 }
 
-std::vector<std::string> IndirectFittingModel::inputDisplayNames(
+std::vector<std::string> IndirectFittingModel::createDisplayNames(
     const std::string &formatString, const std::string &rangeDelimiter) const {
   std::vector<std::string> displayNames;
-  for (const auto &fitData : m_fittingData)
-    displayNames.emplace_back(
-        fitData->displayName(formatString, rangeDelimiter));
+  for (auto i = 0u; i < numberOfWorkspaces(); ++i)
+    displayNames.emplace_back();
   return displayNames;
 }
 
 std::string
-IndirectFittingModel::inputDisplayName(const std::string &formatString,
+IndirectFittingModel::createOutputName(const std::string &formatString,
                                        const std::string &rangeDelimiter,
                                        std::size_t dataIndex) const {
   return m_fittingData[dataIndex]->displayName(formatString, rangeDelimiter);
@@ -235,8 +239,16 @@ std::vector<std::string> IndirectFittingModel::getFitParameterNames() const {
   return std::vector<std::string>();
 }
 
-Mantid::API::IFunction_sptr IndirectFittingModel::getFittingFunction() const {
+IFunction_sptr IndirectFittingModel::getFittingFunction() const {
   return m_activeFunction;
+}
+
+IAlgorithm_sptr IndirectFittingModel::sequentialFitAlgorithm() const {
+  return AlgorithmManager::Instance().create("QENSFitSequential");
+}
+
+IAlgorithm_sptr IndirectFittingModel::simultaneousFitAlgorithm() const {
+  return AlgorithmManager::Instance().create("QENSFitSimultaneous");
 }
 
 void IndirectFittingModel::setSpectra(const Spectra &spectra,
@@ -371,12 +383,11 @@ IndirectFittingModel::getDefaultParameters(std::size_t) const {
   return std::unordered_map<std::string, ParameterValue>();
 }
 
-boost::optional<ResultLocation>
-IndirectFittingModel::getResultLocation(std::size_t index,
-                                        std::size_t spectrum) const {
+Mantid::API::MatrixWorkspace_sptr
+IndirectFittingModel::getResult(std::size_t index, std::size_t spectrum) const {
   if (m_previousModelSelected)
-    return m_fitOutput->getResultLocation(m_fittingData[index].get(), spectrum);
-  return boost::none;
+    return m_fitOutput->getResult(m_fittingData[index].get(), spectrum);
+  return nullptr;
 }
 
 void IndirectFittingModel::saveResult() const {
