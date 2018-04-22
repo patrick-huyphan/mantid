@@ -1,9 +1,9 @@
 #ifndef MANTIDQTMANTIDWIDGETS_JOBTREEVIEW_H_
 #define MANTIDQTMANTIDWIDGETS_JOBTREEVIEW_H_
+#include "MantidQtWidgets/Common/Batch/ExtractSubtrees.h"
 #include "MantidQtWidgets/Common/Batch/QtStandardItemTreeAdapter.h"
 #include "MantidQtWidgets/Common/Batch/QtTreeCursorNavigation.h"
 #include "MantidQtWidgets/Common/Batch/RowLocation.h"
-#include "MantidQtWidgets/Common/Batch/ExtractSubtrees.h"
 #include "MantidQtWidgets/Common/DllOption.h"
 #include <boost/optional.hpp>
 
@@ -57,8 +57,8 @@ public:
   void replaceSubtree(RowLocation const &rootToRemove,
                       typename ExtractSubtrees::Subtree const &toInsert);
 
-  typename ExtractSubtrees::Subtree::const_iterator insertSubtreeRecursive(
-      RowLocation const &parent, int depth,
+  typename ExtractSubtrees::Subtree::const_iterator buildSubtreeRecursive(
+      QStandardItem *parentItem, int index, RowLocation const &parent, int depth,
       typename ExtractSubtrees::Subtree::const_iterator current,
       typename ExtractSubtrees::Subtree::const_iterator end);
 

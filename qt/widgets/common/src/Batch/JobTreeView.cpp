@@ -52,6 +52,10 @@ std::vector<RowLocation> JobTreeView::selectedRowLocations() const {
   return rowSelection;
 }
 
+std::vector<RowSubtree> JobTreeView::selectedRows() {
+  
+}
+
 void JobTreeView::removeSelectedRequested() {
   m_notifyee->notifyRemoveRowsRequested(selectedRowLocations());
 }
@@ -105,23 +109,27 @@ void JobTreeView::replaceSubtree(
   insertSubtreeAt(insertionParent, insertionIndex, toInsert);
 }
 
-std::pair<typename ExtractSubtrees::Subtree::const_iterator>
-JobTreeView::buildSubtreeRecursive(QStandardItem* item,
-    RowLocation const &parent, int depth,
+typename ExtractSubtrees::Subtree::const_iterator
+JobTreeView::buildSubtreeRecursive(
+    QStandardItem *parentItem, int index, RowLocation const &parent, int depth,
     typename ExtractSubtrees::Subtree::const_iterator current,
     typename ExtractSubtrees::Subtree::const_iterator end) {
-
+  parentItem->insertRow(index,
+                        adaptedModel().rowFromRowText((*current).second));
+  ++current;
   while (current != end) {
     auto currentRow = (*current).first;
     auto currentDepth = currentRow.depth();
     if (depth < currentDepth) {
-      current =
-          buildSubtreeRecursive(parent.child(currentRow.rowRelativeToParent()),
-                                 depth + 1, current, end); // HACK?
+      current = buildSubtreeRecursive(
+          parentItem->child(index), currentRow.rowRelativeToParent(),
+          parent.child(currentRow.rowRelativeToParent()), depth + 1, current,
+          end);
     } else if (depth > currentDepth) {
       return current;
     } else {
-      appendChildRowOf(parent, (*current).second);
+      auto rootItem = parentItem->child(index);
+      rootItem->appendRow(adaptedModel().rowFromRowText((*current).second));
       ++current;
     }
   }
@@ -131,12 +139,15 @@ JobTreeView::buildSubtreeRecursive(QStandardItem* item,
 void JobTreeView::insertSubtreeAt(
     RowLocation const &parent, int index,
     typename ExtractSubtrees::Subtree const &subtree) {
-  insertChildRowOf(parent, index, subtree[0].second);
+  std::cout << "Inserting subtree" << std::endl;
+  for (auto& item : subtree) {
+    std::cout << item.first <<  ' ' << item.second[0] << '\n';
+  }
+  std::cout << std::endl;
 
-  auto insertionParent = parent.child(index);
-  auto lastDepth = subtree[0].first.depth();
-  insertSubtreeRecursive(insertionParent, lastDepth, subtree.cbegin() + 1,
-                         subtree.cend());
+  buildSubtreeRecursive(
+      adaptedModel().modelItemFromIndex(modelIndexAt(parent)), index,
+      parent, 0, subtree.cbegin(), subtree.cend());
 }
 
 void JobTreeView::replaceRows(
@@ -163,6 +174,7 @@ void JobTreeView::replaceRows(
 
     auto extractSubtrees = ExtractSubtrees();
     std::sort(toInsert.begin(), toInsert.end());
+    //BUG  Text gets out of sync with items here.
     auto subtreesToInsert = extractSubtrees(toInsert, textToInsert).value();
 
     auto subtreeToRemove = subtreesToRemove.cbegin();
@@ -184,7 +196,7 @@ void JobTreeView::replaceRows(
         // appendSubtreeAt(toRemove.back().parent(), toInsert);
       }
     }
-  } catch(std::exception& ex) {
+  } catch (std::exception &ex) {
     std::cout << ex.what() << std::endl;
   }
 }
@@ -223,9 +235,12 @@ QModelIndex JobTreeView::modelIndexAt(RowLocation const &location,
   auto maybeIndex = modelIndexIfExistsAt(location, column);
   if (maybeIndex.is_initialized())
     return maybeIndex.get();
-  else
+  else {
+    int* x = nullptr;
+    std::cout << *x << std::endl;
     throw std::runtime_error("modelIndexAt: Attempted to get model index for "
                              "row location which does not exist.");
+  }
 }
 
 RowLocation JobTreeView::rowLocationAt(QModelIndex const &index) const {
