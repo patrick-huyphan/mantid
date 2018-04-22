@@ -77,7 +77,7 @@ public:
         std::vector<Subtree>({
           Subtree({
             {RowLocation(), cells("Root")},
-            {RowLocation({2}), cells("Child")}
+            {RowLocation({0}), cells("Child")}
           })
         });
     // clang-format on
@@ -138,7 +138,7 @@ public:
           Subtree({
             {RowLocation(),       cells("Root  1")},
             {RowLocation({0}),    cells("Child 1, 0")},
-            {RowLocation({0, 1}), cells("Child 1, 0, 1")},
+            {RowLocation({0, 0}), cells("Child 1, 0, 1")},
             {RowLocation({1}),    cells("Child 1, 1")},
           }),
         });
@@ -215,7 +215,7 @@ public:
             {RowLocation({0, 0, 0}),    cells("Child 1, 0, 0, 0")},
             {RowLocation({0, 0, 1}),    cells("Child 1, 0, 0, 1")},
             {RowLocation({0, 0, 2}),    cells("Child 1, 0, 0, 2")},
-            {RowLocation({2}),          cells("Child 1, 2")}
+            {RowLocation({1}),          cells("Child 1, 2")}
           }),
           Subtree({
             {RowLocation(),             cells("Root  2")}

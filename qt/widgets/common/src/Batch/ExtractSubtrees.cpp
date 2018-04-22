@@ -1,4 +1,5 @@
 #include "MantidQtWidgets/Common/Batch/ExtractSubtrees.h"
+#include <tuple>
 namespace MantidQt {
 namespace MantidWidgets {
 namespace Batch {
@@ -21,45 +22,79 @@ bool ExtractSubtrees::isSiblingOfPrevious(RowLocation const &location) const {
   return location.isSiblingOf(previousNode);
 }
 
+auto extractSubtreeRecursive(
+    Subtree &subtree, RowLocation const &rootRelativeToTree,
+    RowLocation parent, int minDepth,
+    typename std::vector<RowLocation>::const_iterator currentRow,
+    typename std::vector<RowLocation>::const_iterator endRow,
+    typename std::vector<Row>::const_iterator currentRowData)
+    -> boost::optional<
+        std::tuple<typename std::vector<RowLocation>::const_iterator,
+                   typename std::vector<Row>::const_iterator, bool>> {
+  auto childCount = 0;
+  for (; currentRow != endRow; ) {
+    auto currentDepth = (*currentRow).depth();
+    if (currentDepth > minDepth) {
+      if (currentDepth == minDepth + 1) {
+        auto nextPositions = extractSubtreeRecursive(
+            subtree, rootRelativeToTree, subtree.back().first, minDepth + 1,
+            currentRow, endRow, currentRowData);
+        if (nextPositions.is_initialized()) {
+          auto subtreeFinished = false;
+          std::tie(currentRow, currentRowData, subtreeFinished) =
+              nextPositions.value();
+          if (subtreeFinished) {
+            return nextPositions;
+          }
+        } else {
+          return boost::none;
+        }
+      } else  {
+        return boost::none;
+      }
+    } else if (currentDepth < minDepth) {
+      if (currentDepth < rootRelativeToTree.depth())
+        return std::make_tuple(currentRow, currentRowData, true);
+      else
+        return std::make_tuple(currentRow, currentRowData, false);
+    } else {
+      subtree.emplace_back(parent.child(childCount), *currentRowData);
+      ++childCount;
+      ++currentRow;
+      ++currentRowData;
+    }
+  }
+  return std::make_tuple(currentRow, currentRowData, true);
+}
+
 auto ExtractSubtrees::operator()(std::vector<RowLocation> region,
-                                  std::vector<Row> regionData)
+                                 std::vector<Row> regionData)
     -> boost::optional<std::vector<Subtree>> {
   assertOrThrow(
       region.size() == regionData.size(),
       "ExtractSubtrees: region must have a length identical to regionData");
   if (!region.empty()) {
     std::sort(region.begin(), region.end());
-    nodeWasSubtreeRoot(*region.cbegin());
+    auto rowIt = region.cbegin();
+    auto rowDataIt = regionData.cbegin();
+    auto done = false;
     auto subtrees = std::vector<Subtree>();
-    auto current = region.begin() + 1;
-    auto currentData = regionData.begin() + 1;
-    auto subtree = Subtree({{RowLocation(), std::move(*regionData.cbegin())}});
 
-    auto currentSubtreeRoot = region.cbegin();
-    for (; current != region.end(); ++current, ++currentData) {
-      auto &currentNode = *current;
-      if (isChildOfPrevious(currentNode) ||
-          (!previousWasRoot && isSiblingOfPrevious(currentNode))) {
-        nodeWasNotSubtreeRoot(currentNode);
-        subtree.emplace_back(currentNode.relativeTo(*currentSubtreeRoot), *currentData);
-      } else if (currentNode.isDescendantOf(*currentSubtreeRoot)) {
-        if (previousNode.depth() < currentNode.depth())
-          return boost::none;
-        else
-          nodeWasNotSubtreeRoot(currentNode); // Dead case?
-        subtree.emplace_back(currentNode.relativeTo(*currentSubtreeRoot), std::move(*currentData));
-      } else {
-        nodeWasSubtreeRoot(currentNode);
+    while (rowIt != region.end() && !done) {
+      auto subtree = Subtree({{RowLocation(), std::move(*rowDataIt)}});
+      auto nextPositions =
+          extractSubtreeRecursive(subtree, *rowIt, subtree[0].first, (*rowIt).depth() + 1, rowIt + 1,
+                                  region.end(), rowDataIt + 1);
+      if (nextPositions.is_initialized()) {
+        std::tie(rowIt, rowDataIt, done) = nextPositions.value();
         subtrees.emplace_back(std::move(subtree));
-        subtree = Subtree({{RowLocation(), std::move(*currentData)}});
-        currentSubtreeRoot = current;
+      } else {
+        return boost::none;
       }
     }
-    subtrees.emplace_back(std::move(subtree));
     return subtrees;
-  } else {
-    return {};
-  }
+  } else
+    return boost::none;
 }
 } // namespace Batch
 } // namespace MantidWidgets

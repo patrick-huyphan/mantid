@@ -105,8 +105,8 @@ void JobTreeView::replaceSubtree(
   insertSubtreeAt(insertionParent, insertionIndex, toInsert);
 }
 
-typename ExtractSubtrees::Subtree::const_iterator
-JobTreeView::insertSubtreeRecursive(
+std::pair<typename ExtractSubtrees::Subtree::const_iterator>
+JobTreeView::buildSubtreeRecursive(QStandardItem* item,
     RowLocation const &parent, int depth,
     typename ExtractSubtrees::Subtree::const_iterator current,
     typename ExtractSubtrees::Subtree::const_iterator end) {
@@ -116,7 +116,7 @@ JobTreeView::insertSubtreeRecursive(
     auto currentDepth = currentRow.depth();
     if (depth < currentDepth) {
       current =
-          insertSubtreeRecursive(parent.child(currentRow.rowRelativeToParent()),
+          buildSubtreeRecursive(parent.child(currentRow.rowRelativeToParent()),
                                  depth + 1, current, end); // HACK?
     } else if (depth > currentDepth) {
       return current;
